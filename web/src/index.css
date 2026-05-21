@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+/* Minimal global styling for the user-facing Live TV portal. Phase 8 keeps
+   the visual system intentionally simple — a zinc dark theme that resembles
+   the audiobooks SPA but does not (yet) reuse its full token system. Phase
+   9's admin pages may pull in the audiobooks design tokens once we know how
+   much divergence we want between LiveTV and the rest of Continuum. */
+
+@theme inline {
+  --color-background: #09090b;
+  --color-foreground: #fafafa;
+  --color-surface: #18181b;
+  --color-surface-hover: #27272a;
+  --color-border: #27272a;
+  --color-muted-foreground: #a1a1aa;
+  --color-primary: #fafafa;
+  --color-primary-foreground: #09090b;
+  --color-accent: #f59e0b;
+}
+
+html, body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  min-height: 100dvh;
+}
+
+body {
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+/* The guide grid relies on a custom thin scrollbar so the time-axis and
+   channel-axis don't burn pixels on chunky default tracks. Falls back
+   gracefully on Firefox (scrollbar-width) and WebKit. */
+.guide-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, white 20%, transparent) transparent;
+}
+.guide-scroll::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+.guide-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.guide-scroll::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, white 18%, transparent);
+  border-radius: 6px;
+}
+.guide-scroll::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, white 32%, transparent);
+}
