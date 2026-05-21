@@ -32,6 +32,31 @@ body {
   border-color: var(--color-border);
 }
 
+/* form-input is the canonical look for the admin-page form controls:
+   inputs, textareas, and selects. Kept as a utility class so we can match
+   the user-portal Channels search input without repeating the same long
+   className string in every <input>. */
+.form-input {
+  border-radius: 0.375rem;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--color-foreground);
+  outline: none;
+}
+.form-input::placeholder {
+  color: var(--color-muted-foreground);
+}
+.form-input:focus {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 40%, transparent);
+}
+.form-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* The guide grid relies on a custom thin scrollbar so the time-axis and
    channel-axis don't burn pixels on chunky default tracks. Falls back
    gracefully on Firefox (scrollbar-width) and WebKit. */

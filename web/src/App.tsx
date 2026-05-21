@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { Route, Routes, NavLink, useLocation, type Location } from 'react-router';
 import { Home } from '@/pages/Home';
 import { Channels } from '@/pages/Channels';
@@ -8,9 +9,14 @@ import { PlayerPage } from '@/pages/Player';
 import { ProgramDetailRoute } from '@/components/ProgramDetail';
 import { cn } from '@/lib/utils';
 
+// The admin SPA is a large secondary surface that most users never visit.
+// Lazy-loading it (and its sub-pages within Layout.tsx) keeps the initial
+// JS bundle focused on Home / Guide / Channels / Favorites / Search.
+const AdminLayout = lazy(() => import('@/pages/admin/Layout').then((m) => ({ default: m.AdminLayout })));
+
 // The user portal is a single-window app with a tab bar on top. Routes are
-// flat under the plugin mount — admin pages (mounted at /admin/*) come in
-// Phase 9 and render under their own layout (see the placeholder route).
+// flat under the plugin mount; admin pages live under /admin/* and render
+// inside their own AdminLayout shell (lazy-loaded above).
 //
 // Program detail uses react-router's "background location" pattern: when a
 // link sets state.background, we render the modal as an overlay on top of
@@ -32,7 +38,16 @@ export function App() {
           <Route path="/search" element={<Search />} />
           <Route path="/watch/:channelId" element={<PlayerPage />} />
           <Route path="/programs/:id" element={<ProgramDetailRoute mode="page" />} />
-          <Route path="/admin/*" element={<AdminPlaceholder />} />
+          <Route
+            path="/admin/*"
+            element={
+              <Suspense
+                fallback={<div className="p-6 text-sm text-[color:var(--color-muted-foreground)]">Loading admin…</div>}
+              >
+                <AdminLayout />
+              </Suspense>
+            }
+          />
         </Routes>
 
         {/* Modal route layered on top of the page underneath. Only rendered
@@ -75,14 +90,9 @@ function TopNav() {
       {tab({ to: '/channels', label: 'Channels' })}
       {tab({ to: '/favorites', label: 'Favorites' })}
       {tab({ to: '/search', label: 'Search' })}
+      <div className="ml-auto" />
+      {tab({ to: '/admin', label: 'Admin' })}
     </nav>
   );
 }
 
-function AdminPlaceholder() {
-  return (
-    <div className="rounded-lg border border-dashed border-[color:var(--color-border)] p-8 text-center text-[color:var(--color-muted-foreground)]">
-      Admin pages land in Phase 9.
-    </div>
-  );
-}
