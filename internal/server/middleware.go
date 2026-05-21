@@ -3,7 +3,7 @@ package server
 import (
 	"net/http"
 
-	"github.com/ContinuumApp/continuum-plugin-livetv/internal/streamproxy"
+	"github.com/RXWatcher/continuum-plugin-livetv/internal/streamproxy"
 )
 
 // Header names used by the host to authenticate the bridged HTTP request.

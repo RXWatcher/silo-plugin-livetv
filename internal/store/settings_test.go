@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ContinuumApp/continuum-plugin-livetv/internal/store"
-	"github.com/ContinuumApp/continuum-plugin-livetv/internal/testutil"
+	"github.com/RXWatcher/continuum-plugin-livetv/internal/store"
+	"github.com/RXWatcher/continuum-plugin-livetv/internal/testutil"
 )
 
 func TestGetSettings_ReturnsMigrationDefaults(t *testing.T) {

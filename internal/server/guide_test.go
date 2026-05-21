@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ContinuumApp/continuum-plugin-livetv/internal/server"
-	"github.com/ContinuumApp/continuum-plugin-livetv/internal/store"
-	"github.com/ContinuumApp/continuum-plugin-livetv/internal/streamproxy"
-	"github.com/ContinuumApp/continuum-plugin-livetv/internal/testutil"
+	"github.com/RXWatcher/continuum-plugin-livetv/internal/server"
+	"github.com/RXWatcher/continuum-plugin-livetv/internal/store"
+	"github.com/RXWatcher/continuum-plugin-livetv/internal/streamproxy"
+	"github.com/RXWatcher/continuum-plugin-livetv/internal/testutil"
 )
 
 func TestGroups_ListReturnsDistinctEffectiveGroups(t *testing.T) {

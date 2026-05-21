@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/ContinuumApp/continuum-plugin-livetv/internal/store"
+	"github.com/RXWatcher/continuum-plugin-livetv/internal/store"
 )
 
 // getProgram handles GET /programs/{id}. The store.Program returned by

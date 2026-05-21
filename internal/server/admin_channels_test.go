@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/ContinuumApp/continuum-plugin-livetv/internal/store"
-	"github.com/ContinuumApp/continuum-plugin-livetv/internal/testutil"
+	"github.com/RXWatcher/continuum-plugin-livetv/internal/store"
+	"github.com/RXWatcher/continuum-plugin-livetv/internal/testutil"
 )
 
 func TestAdminChannels_ListReturnsTriplet(t *testing.T) {

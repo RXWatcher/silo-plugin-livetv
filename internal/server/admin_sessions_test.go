@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/ContinuumApp/continuum-plugin-livetv/internal/store"
-	"github.com/ContinuumApp/continuum-plugin-livetv/internal/testutil"
+	"github.com/RXWatcher/continuum-plugin-livetv/internal/store"
+	"github.com/RXWatcher/continuum-plugin-livetv/internal/testutil"
 )
 
 // seedSession inserts an active stream session row for the given (user,

@@ -31,7 +31,7 @@ Each phase ends in a state that can be verified independently. Phase 7 ends with
 
 ## Conventions all tasks follow
 
-- Module path: `github.com/ContinuumApp/continuum-plugin-livetv`.
+- Module path: `github.com/RXWatcher/continuum-plugin-livetv`.
 - Postgres connection: `pgxpool.Pool`; DSN from `database_url` config, must contain `search_path=livetv`.
 - Errors wrapped with `fmt.Errorf("op: %w", err)`; HTTP responses use the audiobooks JSON envelope (`{ data }` / `{ error }`).
 - IDs: ULIDs encoded as `text` columns. Use `oklog/ulid/v2`. Reason: matches the convention already established in `continuum-plugin-audiobooks/internal/store`.
@@ -67,7 +67,7 @@ git init -b main
 - [ ] **Step 2: Write `go.mod`**
 
 ```text
-module github.com/ContinuumApp/continuum-plugin-livetv
+module github.com/RXWatcher/continuum-plugin-livetv
 
 go 1.26.0
 
@@ -160,7 +160,7 @@ import (
 	publicmanifest "github.com/ContinuumApp/continuum-plugin-sdk/pkg/pluginsdk/manifest"
 	sdkruntime "github.com/ContinuumApp/continuum-plugin-sdk/pkg/pluginsdk/runtime"
 
-	"github.com/ContinuumApp/continuum-plugin-livetv/internal/migrate"
+	"github.com/RXWatcher/continuum-plugin-livetv/internal/migrate"
 )
 
 //go:embed manifest.json
@@ -1164,7 +1164,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 
-	"github.com/ContinuumApp/continuum-plugin-livetv/internal/migrate"
+	"github.com/RXWatcher/continuum-plugin-livetv/internal/migrate"
 )
 
 func NewPool(t *testing.T) *pgxpool.Pool {
@@ -1313,7 +1313,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ContinuumApp/continuum-plugin-livetv/internal/testutil"
+	"github.com/RXWatcher/continuum-plugin-livetv/internal/testutil"
 )
 
 func TestM3USourceCRUD(t *testing.T) {
@@ -1554,7 +1554,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/ContinuumApp/continuum-plugin-livetv/internal/store"
+	"github.com/RXWatcher/continuum-plugin-livetv/internal/store"
 )
 
 type M3UWorker struct {

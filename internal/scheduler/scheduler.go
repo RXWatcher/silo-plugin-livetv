@@ -17,8 +17,8 @@ import (
 
 	pluginv1 "github.com/ContinuumApp/continuum-plugin-sdk/pkg/pluginproto/continuum/plugin/v1"
 
-	"github.com/ContinuumApp/continuum-plugin-livetv/internal/refresh"
-	"github.com/ContinuumApp/continuum-plugin-livetv/internal/store"
+	"github.com/RXWatcher/continuum-plugin-livetv/internal/refresh"
+	"github.com/RXWatcher/continuum-plugin-livetv/internal/store"
 )
 
 // Worker is the minimal interface the scheduler needs from a refresh worker.

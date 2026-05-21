@@ -9,8 +9,8 @@ import (
 
 	pluginv1 "github.com/ContinuumApp/continuum-plugin-sdk/pkg/pluginproto/continuum/plugin/v1"
 
-	"github.com/ContinuumApp/continuum-plugin-livetv/internal/scheduler"
-	"github.com/ContinuumApp/continuum-plugin-livetv/internal/store"
+	"github.com/RXWatcher/continuum-plugin-livetv/internal/scheduler"
+	"github.com/RXWatcher/continuum-plugin-livetv/internal/store"
 )
 
 // fakeWorker records every RefreshAll invocation so tests can assert that

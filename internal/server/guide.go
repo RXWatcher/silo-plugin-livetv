@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ContinuumApp/continuum-plugin-livetv/internal/streamproxy"
+	"github.com/RXWatcher/continuum-plugin-livetv/internal/streamproxy"
 )
 
 // guideRange is the JSON shape for the window field of the guide response.

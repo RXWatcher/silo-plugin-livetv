@@ -12,10 +12,10 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/ContinuumApp/continuum-plugin-livetv/internal/server"
-	"github.com/ContinuumApp/continuum-plugin-livetv/internal/store"
-	"github.com/ContinuumApp/continuum-plugin-livetv/internal/streamproxy"
-	"github.com/ContinuumApp/continuum-plugin-livetv/internal/testutil"
+	"github.com/RXWatcher/continuum-plugin-livetv/internal/server"
+	"github.com/RXWatcher/continuum-plugin-livetv/internal/store"
+	"github.com/RXWatcher/continuum-plugin-livetv/internal/streamproxy"
+	"github.com/RXWatcher/continuum-plugin-livetv/internal/testutil"
 )
 
 // seedSource creates a parent m3u_sources row so channel inserts pass the FK.

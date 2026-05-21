@@ -34,7 +34,7 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 
-	"github.com/ContinuumApp/continuum-plugin-livetv/internal/store"
+	"github.com/RXWatcher/continuum-plugin-livetv/internal/store"
 )
 
 // cookieName is the cookie key that carries the opaque session token. The

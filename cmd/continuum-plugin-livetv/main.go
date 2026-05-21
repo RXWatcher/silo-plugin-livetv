@@ -25,15 +25,15 @@ import (
 	publicmanifest "github.com/ContinuumApp/continuum-plugin-sdk/pkg/pluginsdk/manifest"
 	sdkruntime "github.com/ContinuumApp/continuum-plugin-sdk/pkg/pluginsdk/runtime"
 
-	"github.com/ContinuumApp/continuum-plugin-livetv/internal/httproutes"
-	"github.com/ContinuumApp/continuum-plugin-livetv/internal/migrate"
-	"github.com/ContinuumApp/continuum-plugin-livetv/internal/refresh"
-	pluginrt "github.com/ContinuumApp/continuum-plugin-livetv/internal/runtime"
-	"github.com/ContinuumApp/continuum-plugin-livetv/internal/scheduler"
-	"github.com/ContinuumApp/continuum-plugin-livetv/internal/server"
-	"github.com/ContinuumApp/continuum-plugin-livetv/internal/settings"
-	"github.com/ContinuumApp/continuum-plugin-livetv/internal/store"
-	"github.com/ContinuumApp/continuum-plugin-livetv/internal/streamproxy"
+	"github.com/RXWatcher/continuum-plugin-livetv/internal/httproutes"
+	"github.com/RXWatcher/continuum-plugin-livetv/internal/migrate"
+	"github.com/RXWatcher/continuum-plugin-livetv/internal/refresh"
+	pluginrt "github.com/RXWatcher/continuum-plugin-livetv/internal/runtime"
+	"github.com/RXWatcher/continuum-plugin-livetv/internal/scheduler"
+	"github.com/RXWatcher/continuum-plugin-livetv/internal/server"
+	"github.com/RXWatcher/continuum-plugin-livetv/internal/settings"
+	"github.com/RXWatcher/continuum-plugin-livetv/internal/store"
+	"github.com/RXWatcher/continuum-plugin-livetv/internal/streamproxy"
 )
 
 //go:embed manifest.json

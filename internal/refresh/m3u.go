@@ -17,8 +17,8 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 
-	"github.com/ContinuumApp/continuum-plugin-livetv/internal/m3u"
-	"github.com/ContinuumApp/continuum-plugin-livetv/internal/store"
+	"github.com/RXWatcher/continuum-plugin-livetv/internal/m3u"
+	"github.com/RXWatcher/continuum-plugin-livetv/internal/store"
 )
 
 // M3UWorker pulls M3U playlists from configured upstream providers, upserts
