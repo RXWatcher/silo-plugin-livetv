@@ -1,7 +1,12 @@
 /continuum-plugin-livetv
 /continuum-plugin-livetv.sha256
+/livetv-e2e-server
 *.test
 *.out
+playwright-report/
+test-results/
+web/playwright-report/
+web/test-results/
 .envrc
 node_modules/
 web/dist/
