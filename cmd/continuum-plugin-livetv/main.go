@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"os"
 	goruntime "runtime"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/hashicorp/go-hclog"
@@ -32,6 +33,7 @@ import (
 	pluginrt "github.com/ContinuumApp/continuum-plugin-livetv/internal/runtime"
 	"github.com/ContinuumApp/continuum-plugin-livetv/internal/scheduler"
 	"github.com/ContinuumApp/continuum-plugin-livetv/internal/store"
+	"github.com/ContinuumApp/continuum-plugin-livetv/internal/streamproxy"
 )
 
 //go:embed manifest.json
@@ -65,10 +67,28 @@ func main() {
 	}
 	defer pool.Close()
 
+	st := store.New(pool)
+
+	// Stream-proxy dependency bundle. Phase 7 will replace StaticSettings with
+	// a DB-backed snapshot the admin UI can edit at runtime.
+	streamDeps := &streamproxy.Deps{
+		Store:    st,
+		Settings: streamproxy.StaticSettings{PerUser: 3, PerChannel: 5, IdleTimeout: 60 * time.Second},
+		Logger:   logger.Named("streamproxy"),
+		HTTP:     http.DefaultClient,
+	}
+
 	r := chi.NewRouter()
 	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	})
+
+	// Stream-proxy routes. CreateSession is the only handler that needs a
+	// userID; the byte-serving handlers authenticate via the opaque cookie.
+	r.Post("/api/v1/livetv/channels/{id}/stream", withUserID(streamDeps.CreateSession))
+	r.Get("/api/v1/livetv/stream/{session_id}.ts", streamDeps.ProxyMPEGTS)
+	r.Get("/api/v1/livetv/stream/{session_id}.m3u8", streamDeps.ProxyHLSPlaylist)
+	r.Get("/api/v1/livetv/stream/{session_id}/segment", streamDeps.ProxyHLSSegment)
 
 	httpSrv := httproutes.NewServer()
 	httpSrv.SetHandler(r)
@@ -78,7 +98,6 @@ func main() {
 	// Build the live store + workers and wire them into the scheduler. depsFn
 	// is a closure so future Configure calls can swap dependencies underneath
 	// the running gRPC server (Phase 7); for now the values are static.
-	st := store.New(pool)
 	m3uWorker := &refresh.M3UWorker{Store: st, Client: http.DefaultClient, Logger: logger.Named("m3u")}
 	xmltvWorker := &refresh.XMLTVWorker{Store: st, Client: http.DefaultClient, Logger: logger.Named("xmltv")}
 	reaper := &scheduler.SettingsReaper{Store: st, Logger: logger.Named("reaper")}
@@ -99,6 +118,22 @@ func main() {
 			ScheduledTask: sched,
 		},
 	})
+}
+
+// withUserID is the placeholder auth middleware. Phase 6 will replace it with
+// host-token validation; for now we read X-Continuum-User-Id from the request
+// (or return 401) so the stream-proxy handler has a non-empty userID. The
+// stream-byte handlers (.ts / .m3u8 / segment) deliberately skip this wrapper
+// because they validate via the opaque cookie set by CreateSession.
+func withUserID(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		uid := r.Header.Get("X-Continuum-User-Id")
+		if uid == "" {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		next.ServeHTTP(w, r.WithContext(streamproxy.WithUserID(r.Context(), uid)))
+	}
 }
 
 // loadManifest parses the embedded manifest.json and replaces the
