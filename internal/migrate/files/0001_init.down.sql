@@ -1,0 +1,3 @@
+DROP TABLE IF EXISTS settings;
+DROP TABLE IF EXISTS xmltv_sources;
+DROP TABLE IF EXISTS m3u_sources;
