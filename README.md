@@ -1,70 +1,49 @@
-# Live TV Portal for Continuum
+# Live TV for Continuum
 
-`continuum.livetv` is Continuum's user-facing live TV portal. It ingests
-IPTV M3U playlists and XMLTV electronic program guides, presents a
-channel grid and guide, proxies streams to clients, and tracks per-user
-favorites and recent channels.
+`continuum.livetv` is Continuum's customer-facing live TV portal. It ingests IPTV M3U playlists and XMLTV electronic program guides, presents a channel grid, EPG, and in-browser player, and proxies stream segments to clients through scoped, idle-reapable sessions.
 
-Install this plugin when you want a single live TV experience in
-Continuum that points at one or more operator-configured M3U + XMLTV
-sources.
+## Category
 
-## Detailed Operations Docs
+Lives under **Video / LiveTV** in the admin sidebar. The plugin registers an HTTP routes capability that hosts both the user portal and the admin UI, plus three scheduled tasks that keep playlists, guide data, and stream sessions healthy.
 
-- [Setup, debugging, and communication flows](docs/setup-debug-flows.md)
-- [Design spec](docs/spec/2026-05-21-livetv-plugin-design.md)
-- [Implementation plan](docs/plan/2026-05-21-livetv-plugin.md)
+## Capabilities
 
-## Source
+| Type | ID | Purpose |
+| --- | --- | --- |
+| `http_routes.v1` | `portal` | Mounts the Live TV portal, admin UI, and stream proxy under `/api/v1/livetv/*` and serves the embedded SPA. |
+| `scheduled_task.v1` | `refresh_m3u_sources` | Re-downloads configured M3U playlists (default `0 */6 * * *`) and refreshes the channel table. |
+| `scheduled_task.v1` | `refresh_xmltv_sources` | Re-downloads configured XMLTV EPG feeds (default `0 */3 * * *`) and refreshes program data. |
+| `scheduled_task.v1` | `reap_idle_sessions` | Closes live-TV stream sessions whose clients have stopped pulling segments (default `* * * * *`). |
 
-```bash
-git clone git@github.com:ContinuumApp/continuum-plugin-livetv.git
-```
+## Dependencies
 
-## Features
+Standalone. The plugin does not subscribe to other Continuum plugins; it only needs the Continuum host for its user-id header, scheduler, and routing surface. Optional companions in the catalog: [`continuum-plugin-notifications`](https://github.com/RXWatcher/continuum-plugin-notifications) (could surface refresh failures or session events) and [`continuum-plugin-stream-dashboard`](https://github.com/RXWatcher/continuum-plugin-stream-dashboard) (could monitor active livetv sessions).
 
-- M3U source ingestion with periodic refresh (default every 6 hours).
-- XMLTV guide ingestion with periodic refresh (default every 3 hours).
-- Channel grid, channel detail, favorites, recents, and EPG search.
-- Virtualized program guide grid with sticky time axis.
-- Per-user and global concurrency caps with idle-session reaping.
-- Stream proxy with scoped session grants; HLS via `hls.js` and
-  MPEG-TS via `mpegts.js` in the browser, native HLS in Safari.
-- Admin UI for sources, per-channel overrides, EPG link keys, live
-  sessions, and runtime settings.
+Host: [`ContinuumApp/continuum`](https://github.com/ContinuumApp/continuum). SDK: [`ContinuumApp/continuum-plugin-sdk`](https://github.com/ContinuumApp/continuum-plugin-sdk).
 
-## Architecture
+## External services
 
-The portal owns its own Postgres schema and serves both the
-customer-facing SPA and the admin SPA from a single embedded asset
-bundle. Stream traffic flows through a thin proxy that mints scoped
-session cookies against the configured M3U upstream.
+- M3U playlist URLs supplied by the operator (one or more IPTV providers).
+- XMLTV EPG URLs supplied by the operator (often distinct from the M3U origin).
+- Upstream stream URLs referenced by each M3U entry; the plugin proxies HLS (`.m3u8`) and MPEG-TS (`.ts`) bytes through to clients with scoped session cookies, without transcoding.
 
-The plugin is a single Go binary that bundles:
+## Customer-facing features
 
-- the chi-based HTTP router (user, admin, and stream-byte routes),
-- the M3U and XMLTV parsers,
-- the refresh workers and scheduler,
-- the stream proxy,
-- the embedded React 19 SPA.
+- Channel grid grouped by M3U `group-title`, with favorites and recently watched lists.
+- Virtualized EPG grid with sticky time axis and full-text program search.
+- In-browser player using `hls.js` for HLS, `mpegts.js` for MPEG-TS, and native HLS in Safari.
+- Per-user favorites (reorderable) and recent-channels tracking.
+- Admin UI under `/admin/*` for sources, per-channel `tvg_id` overrides, EPG link keys, live sessions, and runtime settings.
 
 ## Configuration
 
 | Key | Required | Description |
-|---|---|---|
-| `database_url` | yes | Postgres DSN using the `livetv` schema. |
+| --- | --- | --- |
+| `database_url` | yes | Postgres DSN scoped to the `livetv` schema, e.g. `postgres://plugin_livetv:...@host:5432/continuum?search_path=livetv&sslmode=disable`. |
 
-Example DSN:
+Everything else lives in the admin UI at `/admin/settings` and is editable at runtime without a restart: M3U and XMLTV source URLs, refresh intervals, per-user and global concurrency caps, and idle-session timeouts used by the reaper.
 
-```text
-postgres://plugin_livetv:password@postgres:5432/continuum?search_path=livetv&sslmode=disable
-```
-
-All other settings (refresh intervals, idle timeouts, concurrency caps)
-live in `/admin/settings` and are editable at runtime without a
-restart.
-
-## Database Setup
+The plugin applies its own migrations at startup. To provision the role and schema:
 
 ```sql
 CREATE ROLE plugin_livetv WITH LOGIN PASSWORD '<chosen>';
@@ -72,62 +51,12 @@ CREATE SCHEMA livetv AUTHORIZATION plugin_livetv;
 GRANT CONNECT ON DATABASE continuum TO plugin_livetv;
 ```
 
-The plugin applies its migrations at startup.
+## Detailed docs
 
-## Provider Setup
+- [Setup, debugging, and communication flows](docs/setup-debug-flows.md)
+- [Design spec](docs/spec/2026-05-21-livetv-plugin-design.md)
+- [Implementation plan](docs/plan/2026-05-21-livetv-plugin.md)
 
-After installing the portal:
+## Build and release
 
-1. Open the Live TV admin UI -> `/admin/sources`.
-2. Add an M3U source by URL. Click "Refresh"; wait for `last_status='ok'`.
-3. Optionally add an XMLTV source for the EPG. Refresh and wait for ok.
-4. Visit `/admin/channels` to set per-channel `tvg_id` overrides or
-   extra EPG link keys for channels whose M3U id does not match the
-   XMLTV id.
-5. Visit `/channels` to confirm channels populated and tune one to
-   verify playback.
-
-For full setup, debugging, and operational flows see
-[`docs/setup-debug-flows.md`](docs/setup-debug-flows.md).
-
-## HTTP Surface
-
-| Route | Access | Purpose |
-|---|---|---|
-| `/api/v1/livetv/channels` | authenticated | Channel list. |
-| `/api/v1/livetv/channels/{id}` | authenticated | Channel detail. |
-| `/api/v1/livetv/groups` | authenticated | Channel groups. |
-| `/api/v1/livetv/guide` | authenticated | Program guide window. |
-| `/api/v1/livetv/programs/{id}` | authenticated | Program detail. |
-| `/api/v1/livetv/programs/search` | authenticated | EPG search. |
-| `/api/v1/livetv/favorites*` | authenticated | Favorites CRUD + reorder. |
-| `/api/v1/livetv/recent` | authenticated | Recent channels. |
-| `/api/v1/livetv/channels/{id}/stream` | authenticated | Mint session. |
-| `/api/v1/livetv/stream/{id}.{ts,m3u8}` | session cookie | Stream bytes. |
-| `/api/v1/livetv/admin/*` | admin | Sources, channels, sessions, settings. |
-| `/healthz` | public | Liveness probe (204). |
-| `/*` | authenticated | Live TV SPA assets. |
-
-## Build And Test
-
-```bash
-make test     # go test ./... and pnpm vitest
-make build    # builds the SPA, the binary, and writes a .sha256 file
-```
-
-Or run individual steps:
-
-```bash
-go test ./...
-cd web && pnpm install && pnpm run build
-go build -o continuum-plugin-livetv ./cmd/continuum-plugin-livetv
-```
-
-## Known Limitations
-
-- No per-channel concurrency cap (only per-user and global).
-- No transcoding; clients must demux the upstream natively.
-- No automatic XMLTV-to-channel name fuzzy match; mismatches require
-  manual `tvg_id` overrides in `/admin/channels`.
-- Single-tenant per installation; the host's user-id header is the only
-  scope.
+CI builds linux-amd64 binaries on push to main via the reusable workflow in [RXWatcher/continuum-plugin-repository](https://github.com/RXWatcher/continuum-plugin-repository) and publishes them to the catalog at [`./binaries/`](https://github.com/RXWatcher/continuum-plugin-repository/tree/main/binaries).
