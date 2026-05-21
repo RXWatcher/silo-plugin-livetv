@@ -64,12 +64,13 @@ func (s *Server) Routes() http.Handler {
 		}
 
 		// Admin subrouter — gated by RequireAdmin. Sub-mounts live in
-		// admin_sources.go, admin_channels.go so the route table here stays a
-		// quick directory rather than a wall of handlers.
+		// admin_sources.go, admin_channels.go, admin_sessions.go so the route
+		// table here stays a quick directory rather than a wall of handlers.
 		api.Route("/admin", func(adm chi.Router) {
 			adm.Use(RequireAdmin)
 			s.mountAdminSources(adm)
 			s.mountAdminChannels(adm)
+			s.mountAdminSessions(adm)
 		})
 	})
 
