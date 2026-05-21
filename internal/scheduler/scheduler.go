@@ -119,12 +119,12 @@ func (s *Server) Run(ctx context.Context, req *pluginv1.RunScheduledTaskRequest)
 	return &pluginv1.RunScheduledTaskResponse{}, nil
 }
 
-// SettingsReaper resolves the idle-session timeout from the settings row at
-// every tick (Phase 7 will replace this with a Configure-snapshot cache) and
-// delegates the actual reap to refresh.ReapIdle.
+// SettingsReaper resolves the idle-session timeout from the settings row on
+// every tick. It pre-dates the Phase 7 snapshot and stays around for the
+// transition window / for callers that don't want to wire the snapshot.
 //
-// Lives here rather than in the refresh package so we don't leak settings-
-// table access outside the dispatch layer.
+// New production wiring should prefer SnapshotReaper, which reads the timeout
+// from the in-memory cache that admin PUTs refresh.
 type SettingsReaper struct {
 	Store  *store.Store
 	Logger hclog.Logger
@@ -137,6 +137,32 @@ func (r *SettingsReaper) Reap(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	return refresh.ReapIdle(ctx, r.Store, timeout, r.Logger)
+}
+
+// IdleTimeoutSource is the minimal surface SnapshotReaper needs: just a way
+// to fetch the current idle cutoff. Implemented by *settings.Snapshot but
+// kept tiny so tests can inject a one-off double.
+type IdleTimeoutSource interface {
+	SessionIdleTimeout() time.Duration
+}
+
+// SnapshotReaper is the Phase 7 production reaper: it reads the idle timeout
+// from the in-memory settings snapshot, which means admin PUTs propagate to
+// the reaper on the very next tick without a settings query.
+type SnapshotReaper struct {
+	Store    *store.Store
+	Settings IdleTimeoutSource
+	Logger   hclog.Logger
+}
+
+// Reap reads SessionIdleTimeout from the snapshot and ends every active
+// session whose last_byte_at predates the cutoff.
+func (r *SnapshotReaper) Reap(ctx context.Context) error {
+	if r.Settings == nil {
+		return fmt.Errorf("snapshot reaper: settings not wired")
+	}
+	timeout := r.Settings.SessionIdleTimeout()
 	return refresh.ReapIdle(ctx, r.Store, timeout, r.Logger)
 }
 

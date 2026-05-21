@@ -17,7 +17,6 @@ import (
 	"net/http"
 	"os"
 	goruntime "runtime"
-	"time"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -32,6 +31,7 @@ import (
 	pluginrt "github.com/ContinuumApp/continuum-plugin-livetv/internal/runtime"
 	"github.com/ContinuumApp/continuum-plugin-livetv/internal/scheduler"
 	"github.com/ContinuumApp/continuum-plugin-livetv/internal/server"
+	"github.com/ContinuumApp/continuum-plugin-livetv/internal/settings"
 	"github.com/ContinuumApp/continuum-plugin-livetv/internal/store"
 	"github.com/ContinuumApp/continuum-plugin-livetv/internal/streamproxy"
 )
@@ -69,29 +69,40 @@ func main() {
 
 	st := store.New(pool)
 
-	// Stream-proxy dependency bundle. Phase 7 will replace StaticSettings with
-	// a DB-backed snapshot the admin UI can edit at runtime.
-	settings := streamproxy.StaticSettings{
-		PerUser:     3,
-		PerChannel:  5,
-		IdleTimeout: 60 * time.Second,
-		GuideWindow: 24 * time.Hour,
+	// Settings snapshot: pre-populated from the singleton settings row, kept
+	// hot by the admin PUT /admin/settings handler. Replaces StaticSettings
+	// across both the stream-proxy and the server-level Settings field so the
+	// operator can edit caps and timeouts at runtime.
+	snap, err := settings.Load(ctx, st)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "load settings snapshot: %v\n", err)
+		os.Exit(1)
 	}
+
 	streamDeps := &streamproxy.Deps{
 		Store:    st,
-		Settings: settings,
+		Settings: snap,
 		Logger:   logger.Named("streamproxy"),
 		HTTP:     http.DefaultClient,
 	}
+
+	// Build the live workers up-front so the admin handler and the scheduler
+	// share the same instances. depsFn closes over them so future Configure
+	// calls can swap dependencies underneath the running gRPC server.
+	m3uWorker := &refresh.M3UWorker{Store: st, Client: http.DefaultClient, Logger: logger.Named("m3u")}
+	xmltvWorker := &refresh.XMLTVWorker{Store: st, Client: http.DefaultClient, Logger: logger.Named("xmltv")}
 
 	// Build the server package's HTTP handler — single source of truth for the
 	// URL map. All routes (user API, admin API, stream-proxy bytes) are
 	// mounted here; the httproutes capability bridge wraps it.
 	srv := &server.Server{
-		Store:    st,
-		Stream:   streamDeps,
-		Settings: settings,
-		Logger:   logger.Named("api"),
+		Store:       st,
+		Stream:      streamDeps,
+		Settings:    snap,
+		Logger:      logger.Named("api"),
+		M3UWorker:   m3uWorker,
+		XMLTVWorker: xmltvWorker,
+		Snapshot:    snap,
 	}
 
 	httpSrv := httproutes.NewServer()
@@ -99,12 +110,9 @@ func main() {
 
 	rt := pluginrt.New(manifest)
 
-	// Build the live store + workers and wire them into the scheduler. depsFn
-	// is a closure so future Configure calls can swap dependencies underneath
-	// the running gRPC server (Phase 7); for now the values are static.
-	m3uWorker := &refresh.M3UWorker{Store: st, Client: http.DefaultClient, Logger: logger.Named("m3u")}
-	xmltvWorker := &refresh.XMLTVWorker{Store: st, Client: http.DefaultClient, Logger: logger.Named("xmltv")}
-	reaper := &scheduler.SettingsReaper{Store: st, Logger: logger.Named("reaper")}
+	// SnapshotReaper consumes the same snapshot the admin handler updates, so
+	// edits propagate to the reaper on the next tick without a DB read.
+	reaper := &scheduler.SnapshotReaper{Store: st, Settings: snap, Logger: logger.Named("reaper")}
 	sched := scheduler.New(func() *scheduler.Deps {
 		return &scheduler.Deps{
 			Store:  st,

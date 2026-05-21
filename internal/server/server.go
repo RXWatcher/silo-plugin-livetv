@@ -32,6 +32,13 @@ type RefreshWorker interface {
 	RefreshOne(ctx context.Context, id string) error
 }
 
+// SettingsReloader is implemented by the DB-backed Snapshot in the settings
+// package: PUT /admin/settings calls Reload after persisting so streamproxy
+// observers see the new values without restarting the plugin.
+type SettingsReloader interface {
+	Reload(ctx context.Context) error
+}
+
 // Server is the HTTP surface root. Build one in main and serve its Routes()
 // from the httproutes capability bridge.
 type Server struct {
@@ -42,10 +49,11 @@ type Server struct {
 	// BasePath defaults to /api/v1/livetv when empty.
 	BasePath string
 
-	// Phase 7 wiring: refresh workers feed /admin/sources/{kind}/{id}/refresh.
-	// Task 27 adds Snapshot.
+	// Phase 7 wiring: refresh workers feed /admin/sources/{kind}/{id}/refresh
+	// and the settings snapshot reloader is invoked by PUT /admin/settings.
 	M3UWorker   RefreshWorker
 	XMLTVWorker RefreshWorker
+	Snapshot    SettingsReloader
 }
 
 // logger returns the configured logger, falling back to a null logger so
