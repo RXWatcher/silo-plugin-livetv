@@ -28,7 +28,10 @@ import (
 
 	"github.com/ContinuumApp/continuum-plugin-livetv/internal/httproutes"
 	"github.com/ContinuumApp/continuum-plugin-livetv/internal/migrate"
+	"github.com/ContinuumApp/continuum-plugin-livetv/internal/refresh"
 	pluginrt "github.com/ContinuumApp/continuum-plugin-livetv/internal/runtime"
+	"github.com/ContinuumApp/continuum-plugin-livetv/internal/scheduler"
+	"github.com/ContinuumApp/continuum-plugin-livetv/internal/store"
 )
 
 //go:embed manifest.json
@@ -72,11 +75,28 @@ func main() {
 
 	rt := pluginrt.New(manifest)
 
+	// Build the live store + workers and wire them into the scheduler. depsFn
+	// is a closure so future Configure calls can swap dependencies underneath
+	// the running gRPC server (Phase 7); for now the values are static.
+	st := store.New(pool)
+	m3uWorker := &refresh.M3UWorker{Store: st, Client: http.DefaultClient, Logger: logger.Named("m3u")}
+	xmltvWorker := &refresh.XMLTVWorker{Store: st, Client: http.DefaultClient, Logger: logger.Named("xmltv")}
+	reaper := &scheduler.SettingsReaper{Store: st, Logger: logger.Named("reaper")}
+	sched := scheduler.New(func() *scheduler.Deps {
+		return &scheduler.Deps{
+			Store:  st,
+			M3U:    m3uWorker,
+			XMLTV:  xmltvWorker,
+			Reaper: reaper,
+		}
+	}, logger)
+
 	sdkruntime.Serve(sdkruntime.ServeConfig{
 		Logger: logger,
 		Servers: sdkruntime.CapabilityServers{
-			Runtime:    rt,
-			HttpRoutes: httpSrv,
+			Runtime:       rt,
+			HttpRoutes:    httpSrv,
+			ScheduledTask: sched,
 		},
 	})
 }
