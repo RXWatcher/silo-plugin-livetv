@@ -8,6 +8,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -23,6 +24,14 @@ import (
 // the route mount point stay in lockstep.
 const defaultBasePath = "/api/v1/livetv"
 
+// RefreshWorker is the minimal surface admin handlers need from a refresh
+// worker: re-fetch a single source by id. Both refresh.M3UWorker and
+// refresh.XMLTVWorker satisfy this; tests substitute in-memory doubles that
+// just record calls.
+type RefreshWorker interface {
+	RefreshOne(ctx context.Context, id string) error
+}
+
 // Server is the HTTP surface root. Build one in main and serve its Routes()
 // from the httproutes capability bridge.
 type Server struct {
@@ -32,6 +41,11 @@ type Server struct {
 	Logger   hclog.Logger
 	// BasePath defaults to /api/v1/livetv when empty.
 	BasePath string
+
+	// Phase 7 wiring: refresh workers feed /admin/sources/{kind}/{id}/refresh.
+	// Task 27 adds Snapshot.
+	M3UWorker   RefreshWorker
+	XMLTVWorker RefreshWorker
 }
 
 // logger returns the configured logger, falling back to a null logger so

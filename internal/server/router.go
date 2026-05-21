@@ -63,11 +63,12 @@ func (s *Server) Routes() http.Handler {
 			api.Get("/stream/{session_id}/segment", s.Stream.ProxyHLSSegment)
 		}
 
-		// Admin subrouter — handlers land in Phase 7. We mount the gate now so
-		// the route table is the single source of truth.
+		// Admin subrouter — gated by RequireAdmin. Sub-mounts live in
+		// admin_sources.go so the route table here stays a quick directory
+		// rather than a wall of handlers.
 		api.Route("/admin", func(adm chi.Router) {
 			adm.Use(RequireAdmin)
-			// Phase 7: adm.Get("/sources", s.adminListSources) ...
+			s.mountAdminSources(adm)
 		})
 	})
 
