@@ -12,6 +12,14 @@ sources.
 ## Detailed Operations Docs
 
 - [Setup, debugging, and communication flows](docs/setup-debug-flows.md)
+- [Design spec](docs/spec/2026-05-21-livetv-plugin-design.md)
+- [Implementation plan](docs/plan/2026-05-21-livetv-plugin.md)
+
+## Source
+
+```bash
+git clone git@github.com:ContinuumApp/continuum-plugin-livetv.git
+```
 
 ## Features
 
