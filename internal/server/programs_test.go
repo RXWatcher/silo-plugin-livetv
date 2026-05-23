@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/store"
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/testutil"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/store"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/testutil"
 )
 
 func TestProgram_GetReturnsDetailsAndCredits(t *testing.T) {

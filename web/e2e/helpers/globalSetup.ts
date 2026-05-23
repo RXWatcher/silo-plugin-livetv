@@ -48,7 +48,7 @@ async function startPostgresContainer(): Promise<{ dsn: string; containerID: str
     '-e',
     'POSTGRES_PASSWORD=e2e',
     '-e',
-    'POSTGRES_DB=continuum',
+    'POSTGRES_DB=silo',
     '-p',
     '0:5432',
     'postgres:16',
@@ -81,7 +81,7 @@ async function startPostgresContainer(): Promise<{ dsn: string; containerID: str
         '-U',
         'plugin_livetv',
         '-d',
-        'continuum',
+        'silo',
       ]);
       await execFileP('docker', [
         'exec',
@@ -90,7 +90,7 @@ async function startPostgresContainer(): Promise<{ dsn: string; containerID: str
         '-U',
         'plugin_livetv',
         '-d',
-        'continuum',
+        'silo',
         '-c',
         'SELECT 1',
       ]);
@@ -111,12 +111,12 @@ async function startPostgresContainer(): Promise<{ dsn: string; containerID: str
     '-U',
     'plugin_livetv',
     '-d',
-    'continuum',
+    'silo',
     '-c',
     'CREATE SCHEMA IF NOT EXISTS livetv AUTHORIZATION plugin_livetv;',
   ]);
 
-  const dsn = `postgres://plugin_livetv:e2e@127.0.0.1:${port}/continuum?sslmode=disable&search_path=livetv`;
+  const dsn = `postgres://plugin_livetv:e2e@127.0.0.1:${port}/silo?sslmode=disable&search_path=livetv`;
   return { dsn, containerID };
 }
 

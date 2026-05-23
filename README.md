@@ -1,6 +1,6 @@
-# Live TV for Continuum
+# Live TV for Silo
 
-`continuum.livetv` is Continuum's customer-facing live TV portal. It ingests IPTV M3U playlists and XMLTV electronic program guides, presents a channel grid, EPG, and in-browser player, and proxies stream segments to clients through scoped, idle-reapable sessions.
+`silo.livetv` is Silo's customer-facing live TV portal. It ingests IPTV M3U playlists and XMLTV electronic program guides, presents a channel grid, EPG, and in-browser player, and proxies stream segments to clients through scoped, idle-reapable sessions.
 
 ## Category
 
@@ -17,9 +17,9 @@ Lives under **Video / LiveTV** in the admin sidebar. The plugin registers an HTT
 
 ## Dependencies
 
-Standalone. The plugin does not subscribe to other Continuum plugins; it only needs the Continuum host for its user-id header, scheduler, and routing surface. Optional companions in the catalog: [`continuum-plugin-notifications`](https://github.com/RXWatcher/continuum-plugin-notifications) (could surface refresh failures or session events) and [`continuum-plugin-stream-dashboard`](https://github.com/RXWatcher/continuum-plugin-stream-dashboard) (could monitor active livetv sessions).
+Standalone. The plugin does not subscribe to other Silo plugins; it only needs the Silo host for its user-id header, scheduler, and routing surface. Optional companions in the catalog: [`silo-plugin-notifications`](https://github.com/RXWatcher/silo-plugin-notifications) (could surface refresh failures or session events) and [`silo-plugin-stream-dashboard`](https://github.com/RXWatcher/silo-plugin-stream-dashboard) (could monitor active livetv sessions).
 
-Host: [`ContinuumApp/continuum`](https://github.com/ContinuumApp/continuum). SDK: [`ContinuumApp/continuum-plugin-sdk`](https://github.com/ContinuumApp/continuum-plugin-sdk).
+Host: [`ContinuumApp/silo`](https://github.com/ContinuumApp/silo). SDK: [`ContinuumApp/continuum-plugin-sdk`](https://github.com/ContinuumApp/continuum-plugin-sdk).
 
 ## External services
 
@@ -39,7 +39,7 @@ Host: [`ContinuumApp/continuum`](https://github.com/ContinuumApp/continuum). SDK
 
 | Key | Required | Description |
 | --- | --- | --- |
-| `database_url` | yes | Postgres DSN scoped to the `livetv` schema, e.g. `postgres://plugin_livetv:...@host:5432/continuum?search_path=livetv&sslmode=disable`. |
+| `database_url` | yes | Postgres DSN scoped to the `livetv` schema, e.g. `postgres://plugin_livetv:...@host:5432/silo?search_path=livetv&sslmode=disable`. |
 
 Everything else lives in the admin UI at `/admin/settings` and is editable at runtime without a restart: M3U and XMLTV source URLs, refresh intervals, per-user and global concurrency caps, and idle-session timeouts used by the reaper.
 
@@ -48,7 +48,7 @@ The plugin applies its own migrations at startup. To provision the role and sche
 ```sql
 CREATE ROLE plugin_livetv WITH LOGIN PASSWORD '<chosen>';
 CREATE SCHEMA livetv AUTHORIZATION plugin_livetv;
-GRANT CONNECT ON DATABASE continuum TO plugin_livetv;
+GRANT CONNECT ON DATABASE silo TO plugin_livetv;
 ```
 
 ## Detailed docs
@@ -59,4 +59,4 @@ GRANT CONNECT ON DATABASE continuum TO plugin_livetv;
 
 ## Build and release
 
-CI builds linux-amd64 binaries on push to main via the reusable workflow in [RXWatcher/continuum-plugin-repository](https://github.com/RXWatcher/continuum-plugin-repository) and publishes them to the catalog at [`./binaries/`](https://github.com/RXWatcher/continuum-plugin-repository/tree/main/binaries).
+CI builds linux-amd64 binaries on push to main via the reusable workflow in [RXWatcher/silo-plugin-repository](https://github.com/RXWatcher/silo-plugin-repository) and publishes them to the catalog at [`./binaries/`](https://github.com/RXWatcher/silo-plugin-repository/tree/main/binaries).

@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/store"
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/testutil"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/store"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/testutil"
 )
 
 // seedM3USource creates a parent m3u_source row so channel inserts pass the

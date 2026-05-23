@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/migrate"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/migrate"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/testcontainers/testcontainers-go"
 	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
@@ -25,7 +25,7 @@ func StartPG(t *testing.T) *pgxpool.Pool {
 	ctx := context.Background()
 
 	c, err := tcpostgres.Run(ctx, "postgres:16",
-		tcpostgres.WithDatabase("continuum"),
+		tcpostgres.WithDatabase("silo"),
 		tcpostgres.WithUsername("plugin_livetv"),
 		tcpostgres.WithPassword("test"),
 		testcontainers.WithWaitStrategy(

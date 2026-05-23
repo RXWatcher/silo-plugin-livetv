@@ -12,9 +12,9 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/refresh"
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/store"
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/testutil"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/refresh"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/store"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/testutil"
 )
 
 // seedXMLTVSource creates a parent xmltv_sources row pointing at url. Mirrors

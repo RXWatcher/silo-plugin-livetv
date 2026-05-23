@@ -2,13 +2,13 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build `continuum-plugin-livetv` — a self-contained Continuum plugin delivering IPTV / M3U live TV with XMLTV EPG, auth-gated stream proxy (no transcode), and a full Jellyfin-style web SPA (channels, guide grid, program detail, search, favorites).
+**Goal:** Build `silo-plugin-livetv` — a self-contained Silo plugin delivering IPTV / M3U live TV with XMLTV EPG, auth-gated stream proxy (no transcode), and a full Jellyfin-style web SPA (channels, guide grid, program detail, search, favorites).
 
-**Architecture:** Go binary using the existing Continuum plugin SDK. Single Postgres schema `livetv` for sources, channels, EPG, favorites, sessions. Scheduled jobs refresh M3U and XMLTV. Stream proxy fronts upstream HLS / MPEG-TS using `MintScopedStream` for auth. Embedded React 19 SPA at the plugin root. Mirrors the file layout and tooling of `continuum-plugin-audiobooks`.
+**Architecture:** Go binary using the existing Silo plugin SDK. Single Postgres schema `livetv` for sources, channels, EPG, favorites, sessions. Scheduled jobs refresh M3U and XMLTV. Stream proxy fronts upstream HLS / MPEG-TS using `MintScopedStream` for auth. Embedded React 19 SPA at the plugin root. Mirrors the file layout and tooling of `silo-plugin-audiobooks`.
 
 **Tech Stack:** Go 1.26, `github.com/ContinuumApp/continuum-plugin-sdk`, `go-chi/chi/v5`, `jackc/pgx/v5`, `golang-migrate/migrate/v4`, `hashicorp/go-hclog`, `oklog/ulid/v2`, `testcontainers-go`. Web: React 19, Vite, Tailwind v4, TanStack Query, react-router v7, radix-ui, lucide, `hls.js`, `mpegts.js`.
 
-**Reference spec:** `/opt/continuum_plugins/docs/superpowers/specs/2026-05-21-livetv-plugin-design.md`
+**Reference spec:** `/opt/silo_plugins/docs/superpowers/specs/2026-05-21-livetv-plugin-design.md`
 
 ---
 
@@ -31,14 +31,14 @@ Each phase ends in a state that can be verified independently. Phase 7 ends with
 
 ## Conventions all tasks follow
 
-- Module path: `github.com/RXWatcher/continuum-plugin-livetv`.
+- Module path: `github.com/RXWatcher/silo-plugin-livetv`.
 - Postgres connection: `pgxpool.Pool`; DSN from `database_url` config, must contain `search_path=livetv`.
 - Errors wrapped with `fmt.Errorf("op: %w", err)`; HTTP responses use the audiobooks JSON envelope (`{ data }` / `{ error }`).
-- IDs: ULIDs encoded as `text` columns. Use `oklog/ulid/v2`. Reason: matches the convention already established in `continuum-plugin-audiobooks/internal/store`.
+- IDs: ULIDs encoded as `text` columns. Use `oklog/ulid/v2`. Reason: matches the convention already established in `silo-plugin-audiobooks/internal/store`.
 - Times: `timestamptz` in DB, UTC throughout Go code, `time.Time` in handlers, ISO-8601 strings on the wire.
 - Go testing: `testing.T` with table-driven cases; integration tests use `testcontainers-go/modules/postgres`.
 - Commit messages: Conventional Commits (`feat(livetv): ...`, `fix(livetv): ...`).
-- New plugin lives at `/opt/continuum_plugins/continuum-plugin-livetv/`. Per user preference, work on `main` of that new repo, no feature branches.
+- New plugin lives at `/opt/silo_plugins/silo-plugin-livetv/`. Per user preference, work on `main` of that new repo, no feature branches.
 
 ---
 
@@ -47,27 +47,27 @@ Each phase ends in a state that can be verified independently. Phase 7 ends with
 ## Task 1: Bootstrap the plugin repo
 
 **Files:**
-- Create: `continuum-plugin-livetv/go.mod`
-- Create: `continuum-plugin-livetv/go.sum` (generated)
-- Create: `continuum-plugin-livetv/Makefile`
-- Create: `continuum-plugin-livetv/.gitignore`
-- Create: `continuum-plugin-livetv/cmd/continuum-plugin-livetv/main.go`
-- Create: `continuum-plugin-livetv/cmd/continuum-plugin-livetv/manifest.json`
-- Create: `continuum-plugin-livetv/README.md`
-- Modify: `/opt/continuum_plugins/go.work` (add `./continuum-plugin-livetv`)
+- Create: `silo-plugin-livetv/go.mod`
+- Create: `silo-plugin-livetv/go.sum` (generated)
+- Create: `silo-plugin-livetv/Makefile`
+- Create: `silo-plugin-livetv/.gitignore`
+- Create: `silo-plugin-livetv/cmd/silo-plugin-livetv/main.go`
+- Create: `silo-plugin-livetv/cmd/silo-plugin-livetv/manifest.json`
+- Create: `silo-plugin-livetv/README.md`
+- Modify: `/opt/silo_plugins/go.work` (add `./silo-plugin-livetv`)
 
 - [ ] **Step 1: Create directory structure**
 
 ```bash
-mkdir -p /opt/continuum_plugins/continuum-plugin-livetv/{cmd/continuum-plugin-livetv,internal,web,docs}
-cd /opt/continuum_plugins/continuum-plugin-livetv
+mkdir -p /opt/silo_plugins/silo-plugin-livetv/{cmd/silo-plugin-livetv,internal,web,docs}
+cd /opt/silo_plugins/silo-plugin-livetv
 git init -b main
 ```
 
 - [ ] **Step 2: Write `go.mod`**
 
 ```text
-module github.com/RXWatcher/continuum-plugin-livetv
+module github.com/RXWatcher/silo-plugin-livetv
 
 go 1.26.0
 
@@ -83,14 +83,14 @@ require (
 )
 ```
 
-- [ ] **Step 3: Write `manifest.json`** at `cmd/continuum-plugin-livetv/manifest.json`
+- [ ] **Step 3: Write `manifest.json`** at `cmd/silo-plugin-livetv/manifest.json`
 
 ```json
 {
-  "plugin_id": "continuum.livetv",
+  "plugin_id": "silo.livetv",
   "version": "0.1.0",
   "checksum": "__CHECKSUM__",
-  "continuum_api_version": "v1",
+  "silo_api_version": "v1",
   "category": "Video/LiveTV",
   "supported_platforms": [{ "os": "linux", "arch": "amd64" }],
   "capabilities": [
@@ -160,14 +160,14 @@ import (
 	publicmanifest "github.com/ContinuumApp/continuum-plugin-sdk/pkg/pluginsdk/manifest"
 	sdkruntime "github.com/ContinuumApp/continuum-plugin-sdk/pkg/pluginsdk/runtime"
 
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/migrate"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/migrate"
 )
 
 //go:embed manifest.json
 var manifestRaw []byte
 
 func main() {
-	logger := hclog.New(&hclog.LoggerOptions{Name: "continuum-plugin-livetv"})
+	logger := hclog.New(&hclog.LoggerOptions{Name: "silo-plugin-livetv"})
 
 	manifest, err := publicmanifest.LoadEmbedded(manifestRaw)
 	if err != nil {
@@ -215,14 +215,14 @@ func main() {
 - [ ] **Step 5: Add `go.work` entry**
 
 ```bash
-cd /opt/continuum_plugins
-go work use ./continuum-plugin-livetv
+cd /opt/silo_plugins
+go work use ./silo-plugin-livetv
 ```
 
 - [ ] **Step 6: Build smoke**
 
 ```bash
-cd /opt/continuum_plugins/continuum-plugin-livetv
+cd /opt/silo_plugins/silo-plugin-livetv
 go mod tidy
 go build ./...
 ```
@@ -364,7 +364,7 @@ func TestRunAppliesAllMigrations(t *testing.T) {
 	defer cancel()
 
 	pg, err := postgres.Run(ctx, "postgres:16",
-		postgres.WithDatabase("continuum"),
+		postgres.WithDatabase("silo"),
 		postgres.WithUsername("plugin_livetv"),
 		postgres.WithPassword("test"),
 	)
@@ -379,7 +379,7 @@ func TestRunAppliesAllMigrations(t *testing.T) {
 	}
 
 	// pre-create the schema like an operator would
-	if _, err := pg.Exec(ctx, []string{"psql", "-U", "plugin_livetv", "-d", "continuum", "-c", "CREATE SCHEMA IF NOT EXISTS livetv"}); err != nil {
+	if _, err := pg.Exec(ctx, []string{"psql", "-U", "plugin_livetv", "-d", "silo", "-c", "CREATE SCHEMA IF NOT EXISTS livetv"}); err != nil {
 		t.Fatalf("create schema: %v", err)
 	}
 
@@ -925,7 +925,7 @@ func ParseAuto(r io.Reader, onChannel func(Channel) error, onProgramme func(Prog
 - [ ] **Step 3: Generate gzipped fixture from `standard.xml`**
 
 ```bash
-gzip -k -n /opt/continuum_plugins/continuum-plugin-livetv/internal/xmltv/testdata/standard.xml
+gzip -k -n /opt/silo_plugins/silo-plugin-livetv/internal/xmltv/testdata/standard.xml
 ```
 
 - [ ] **Step 4: Tests**
@@ -1164,7 +1164,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/migrate"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/migrate"
 )
 
 func NewPool(t *testing.T) *pgxpool.Pool {
@@ -1173,14 +1173,14 @@ func NewPool(t *testing.T) *pgxpool.Pool {
 	defer cancel()
 
 	pg, err := postgres.Run(ctx, "postgres:16",
-		postgres.WithDatabase("continuum"),
+		postgres.WithDatabase("silo"),
 		postgres.WithUsername("plugin_livetv"),
 		postgres.WithPassword("test"),
 	)
 	if err != nil { t.Fatalf("start pg: %v", err) }
 	t.Cleanup(func() { _ = pg.Terminate(context.Background()) })
 
-	if _, _, err := pg.Exec(ctx, []string{"psql", "-U", "plugin_livetv", "-d", "continuum", "-c", "CREATE SCHEMA IF NOT EXISTS livetv"}); err != nil {
+	if _, _, err := pg.Exec(ctx, []string{"psql", "-U", "plugin_livetv", "-d", "silo", "-c", "CREATE SCHEMA IF NOT EXISTS livetv"}); err != nil {
 		t.Fatalf("create schema: %v", err)
 	}
 	dsn, _ := pg.ConnectionString(ctx, "sslmode=disable", "search_path=livetv")
@@ -1313,7 +1313,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/testutil"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/testutil"
 )
 
 func TestM3USourceCRUD(t *testing.T) {
@@ -1554,7 +1554,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/store"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/store"
 )
 
 type M3UWorker struct {
@@ -2166,7 +2166,7 @@ func (s *Server) Routes() http.Handler {
 }
 ```
 
-- [ ] **Step 2: Middleware** — reads `X-Continuum-User-Id` (header forwarded by host), 401 if missing. Adds `userID` to context.
+- [ ] **Step 2: Middleware** — reads `X-Silo-User-Id` (header forwarded by host), 401 if missing. Adds `userID` to context.
 
 - [ ] **Step 3: Channels handlers** with cursor pagination
 
@@ -2386,7 +2386,7 @@ git add -A && git commit -m "feat(livetv): recent endpoint and api wiring"
 ```go
 func (s *Server) requireAdmin(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("X-Continuum-Admin") != "true" { http.Error(w, "forbidden", 403); return }
+		if r.Header.Get("X-Silo-Admin") != "true" { http.Error(w, "forbidden", 403); return }
 		next.ServeHTTP(w, r)
 	})
 }
@@ -2514,7 +2514,7 @@ func (s *Snapshot) Reload(ctx context.Context, st *store.Store) error
 git add -A && git commit -m "feat(livetv): settings snapshot and admin endpoints"
 ```
 
-> **Phase 7 checkpoint:** at this point the plugin should build, all tests pass, and an operator could exercise the entire API via curl. Smoke-test with the manifest installed in a local Continuum host before continuing to the SPA.
+> **Phase 7 checkpoint:** at this point the plugin should build, all tests pass, and an operator could exercise the entire API via curl. Smoke-test with the manifest installed in a local Silo host before continuing to the SPA.
 
 ---
 
@@ -2530,11 +2530,11 @@ git add -A && git commit -m "feat(livetv): settings snapshot and admin endpoints
 - [ ] **Step 1: Copy structure from audiobooks**
 
 ```bash
-cd /opt/continuum_plugins/continuum-plugin-livetv
-cp -r ../continuum-plugin-audiobooks/web/{package.json,vite.config.ts,tsconfig.json,tsconfig.node.json,index.html,components.json,playwright.config.ts,embed.go,public} web/
+cd /opt/silo_plugins/silo-plugin-livetv
+cp -r ../silo-plugin-audiobooks/web/{package.json,vite.config.ts,tsconfig.json,tsconfig.node.json,index.html,components.json,playwright.config.ts,embed.go,public} web/
 mkdir -p web/src/{api,components,lib,pages,player,e2e}
 ```
-Then edit `web/package.json` `name` to `"continuum-plugin-livetv-web"`, add deps `hls.js` and `mpegts.js`, and `@tanstack/react-virtual` for the guide grid.
+Then edit `web/package.json` `name` to `"silo-plugin-livetv-web"`, add deps `hls.js` and `mpegts.js`, and `@tanstack/react-virtual` for the guide grid.
 
 - [ ] **Step 2: `web/src/main.tsx`**
 
@@ -3003,8 +3003,8 @@ git add -A && git commit -m "docs(livetv): setup, debug, readme"
 .PHONY: build test web fmt vet
 
 build: web
-	go build -o continuum-plugin-livetv ./cmd/continuum-plugin-livetv
-	sha256sum continuum-plugin-livetv | awk '{print $$1}' > continuum-plugin-livetv.sha256
+	go build -o silo-plugin-livetv ./cmd/silo-plugin-livetv
+	sha256sum silo-plugin-livetv | awk '{print $$1}' > silo-plugin-livetv.sha256
 	# Replace __CHECKSUM__ in the embedded manifest copy
 	# (the plugin computes the checksum at runtime in main.go — leave the file template intact)
 

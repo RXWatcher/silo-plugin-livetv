@@ -13,7 +13,7 @@ import (
 	"strconv"
 	"sync/atomic"
 
-	pluginv1 "github.com/ContinuumApp/continuum-plugin-sdk/pkg/pluginproto/continuum/plugin/v1"
+	pluginv1 "github.com/ContinuumApp/continuum-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
 )
 
 // Server implements pluginv1.HttpRoutesServer with a swappable handler.

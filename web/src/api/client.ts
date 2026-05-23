@@ -9,7 +9,7 @@
 //   - All requests carry credentials: 'include' so the host's session cookie
 //     and (for stream routes) the per-session cookie set by POST
 //     /channels/{id}/stream are forwarded.
-//   - The session-creation POST is authenticated by the Continuum host's
+//   - The session-creation POST is authenticated by the Silo host's
 //     session, not the per-stream cookie — so we don't need anything special
 //     beyond credentials: 'include' there either.
 

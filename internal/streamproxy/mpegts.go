@@ -10,7 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/store"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/store"
 )
 
 // proxyBufSize is the chunk we pump from upstream to client. 64 KiB is large

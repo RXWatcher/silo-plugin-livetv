@@ -1,6 +1,6 @@
 # API reference
 
-Everything the plugin serves over HTTP, organised by audience. All routes live under `{base}/api/v1/livetv` except `{base}/healthz`. The Continuum host proxies to this prefix; the plugin computes it from the host-supplied base path at boot.
+Everything the plugin serves over HTTP, organised by audience. All routes live under `{base}/api/v1/livetv` except `{base}/healthz`. The Silo host proxies to this prefix; the plugin computes it from the host-supplied base path at boot.
 
 Routes are defined in `internal/server/router.go`. Authentication happens in `internal/server/middleware.go` and `internal/streamproxy/proxy.go`.
 
@@ -9,8 +9,8 @@ Routes are defined in `internal/server/router.go`. Authentication happens in `in
 | Surface | How | Header / cookie |
 | --- | --- | --- |
 | Public | None | `GET /healthz` only |
-| User | `RequireSession` | `X-Continuum-User-Id` (the host sets this on the proxied request) |
-| Admin | `RequireAdmin` | `X-Continuum-User-Id` + `X-Continuum-Admin: true` |
+| User | `RequireSession` | `X-Silo-User-Id` (the host sets this on the proxied request) |
+| Admin | `RequireAdmin` | `X-Silo-User-Id` + `X-Silo-Admin: true` |
 | Stream byte routes | Token verification | Cookie `livetv_stream=<sessionID>.<hex(secret)>` (or `Authorization: Bearer ...`) |
 
 The host owns user identity. The plugin trusts the headers and reflects the user id into request context via `streamproxy.WithUserID`. Don't expose the plugin's port directly to clients — the auth model relies on the host doing the front-line check.
@@ -23,7 +23,7 @@ The host owns user identity. The plugin trusts the headers and reflects the user
 
 ## User API
 
-All require `X-Continuum-User-Id`.
+All require `X-Silo-User-Id`.
 
 ### Channels and groups
 
@@ -87,7 +87,7 @@ Common error responses:
 
 ## Admin API
 
-All require `X-Continuum-User-Id` + `X-Continuum-Admin: true`.
+All require `X-Silo-User-Id` + `X-Silo-Admin: true`.
 
 ### Sources
 

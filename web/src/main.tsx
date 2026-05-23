@@ -10,7 +10,7 @@ import './index.css';
 
 const queryClient = makeQueryClient();
 
-// Continuum mounts each plugin SPA at /api/v1/plugins/{installationId}/...
+// Silo mounts each plugin SPA at /api/v1/plugins/{installationId}/...
 // We feed react-router the same basename so internal links don't drop the
 // proxy prefix. In dev mode mountPath() returns '' and basename falls back
 // to '/'.

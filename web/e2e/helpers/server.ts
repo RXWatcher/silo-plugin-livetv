@@ -22,7 +22,7 @@ const execFileP = promisify(execFile);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// /opt/continuum_plugins/continuum-plugin-livetv
+// /opt/silo_plugins/silo-plugin-livetv
 export const REPO_ROOT = resolve(__dirname, '..', '..', '..');
 export const E2E_BINARY = resolve(REPO_ROOT, 'livetv-e2e-server');
 

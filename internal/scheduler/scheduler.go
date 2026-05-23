@@ -15,10 +15,10 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	pluginv1 "github.com/ContinuumApp/continuum-plugin-sdk/pkg/pluginproto/continuum/plugin/v1"
+	pluginv1 "github.com/ContinuumApp/continuum-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
 
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/refresh"
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/store"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/refresh"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/store"
 )
 
 // Worker is the minimal interface the scheduler needs from a refresh worker.
@@ -64,7 +64,7 @@ func New(depsFn func() *Deps, logger hclog.Logger) *Server {
 
 // taskID extracts the capability id from a scheduled-task key. The host sends
 // "plugin:<installationID>:<capabilityID>" (see task_registry.pluginTaskKey
-// in continuum-core); bare ids may arrive from host integration tests. None
+// in silo-core); bare ids may arrive from host integration tests. None
 // of this plugin's task ids contain ':', so a LastIndex split is safe.
 func taskID(key string) string {
 	if i := strings.LastIndexByte(key, ':'); i >= 0 {

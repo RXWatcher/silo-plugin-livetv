@@ -1,5 +1,5 @@
-/continuum-plugin-livetv
-/continuum-plugin-livetv.sha256
+/silo-plugin-livetv
+/silo-plugin-livetv.sha256
 /livetv-e2e-server
 *.test
 *.out

@@ -26,7 +26,7 @@ import (
 //	{BasePath}/admin/*                               admin (Phase 7)
 //
 // The user/admin routes funnel through RequireSession / RequireAdmin so the
-// X-Continuum-User-Id header is reflected onto request context. The
+// X-Silo-User-Id header is reflected onto request context. The
 // stream-byte routes deliberately skip that middleware because they
 // authenticate via the opaque session cookie set by CreateSession.
 func (s *Server) Routes() http.Handler {
@@ -37,7 +37,7 @@ func (s *Server) Routes() http.Handler {
 
 	base := s.basePath()
 	r.Route(base, func(api chi.Router) {
-		// User-scoped API (RequireSession reflects X-Continuum-User-Id).
+		// User-scoped API (RequireSession reflects X-Silo-User-Id).
 		api.Group(func(u chi.Router) {
 			u.Use(RequireSession)
 			u.Get("/channels", s.listChannels)

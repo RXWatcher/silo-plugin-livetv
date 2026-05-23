@@ -1,13 +1,13 @@
 // Command livetv-e2e-server is a Playwright-facing harness that mounts the
 // plugin's chi router on a plain HTTP listener so end-to-end tests can drive
-// the SPA + API + stream proxy without a Continuum host.
+// the SPA + API + stream proxy without a Silo host.
 //
 // It is NOT used in production. The production entrypoint
-// (cmd/continuum-plugin-livetv) wraps the same router with the gRPC plugin
+// (cmd/silo-plugin-livetv) wraps the same router with the gRPC plugin
 // runtime; this binary only adds:
 //
-//   - An auth-bypass middleware that injects X-Continuum-User-Id and
-//     X-Continuum-Admin so the chi handlers' RequireSession / RequireAdmin
+//   - An auth-bypass middleware that injects X-Silo-User-Id and
+//     X-Silo-Admin so the chi handlers' RequireSession / RequireAdmin
 //     middleware accept every request.
 //   - A `/` fallback that serves the embedded SPA (the gRPC capability
 //     surface does that in production via the host's static file glue;
@@ -36,13 +36,13 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/migrate"
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/refresh"
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/server"
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/settings"
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/store"
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/streamproxy"
-	web "github.com/RXWatcher/continuum-plugin-livetv/web"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/migrate"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/refresh"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/server"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/settings"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/store"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/streamproxy"
+	web "github.com/RXWatcher/silo-plugin-livetv/web"
 )
 
 func main() {
@@ -133,16 +133,16 @@ func main() {
 	}
 }
 
-// withAuthBypass injects the X-Continuum-User-Id and X-Continuum-Admin
+// withAuthBypass injects the X-Silo-User-Id and X-Silo-Admin
 // headers on every API request so the chi RequireSession / RequireAdmin
 // middleware lets the test through without a real host.
 func withAuthBypass(next http.Handler, userID string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("X-Continuum-User-Id") == "" {
-			r.Header.Set("X-Continuum-User-Id", userID)
+		if r.Header.Get("X-Silo-User-Id") == "" {
+			r.Header.Set("X-Silo-User-Id", userID)
 		}
-		if r.Header.Get("X-Continuum-Admin") == "" {
-			r.Header.Set("X-Continuum-Admin", "true")
+		if r.Header.Get("X-Silo-Admin") == "" {
+			r.Header.Set("X-Silo-Admin", "true")
 		}
 		next.ServeHTTP(w, r)
 	})

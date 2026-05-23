@@ -1,6 +1,6 @@
 # Operations
 
-Operator runbook for the `continuum.livetv` plugin. Distinguish:
+Operator runbook for the `silo.livetv` plugin. Distinguish:
 
 - **Customer-facing surfaces** — `/channels`, `/guide`, `/search`, `/favorites`, `/player/:channelId`. These are what end users see in the host UI; an operator's job here is making sure channels populate and play.
 - **Admin-facing surfaces** — everything under `/admin/*` in the SPA and `/api/v1/livetv/admin/*` on the API. Sources, channel overrides, session control, runtime settings.
@@ -11,7 +11,7 @@ For one-off troubleshooting jump to [debugging](debugging.md). This page is the 
 
 1. Provision the role + schema (`README.md` has the SQL).
 2. Install the plugin; supply `database_url` with `search_path=livetv` on the DSN.
-3. Wait for the Continuum admin "Plugins" view to flip the plugin to running. Confirm with `GET /api/v1/livetv/healthz` → 204.
+3. Wait for the Silo admin "Plugins" view to flip the plugin to running. Confirm with `GET /api/v1/livetv/healthz` → 204.
 4. Open `/admin/sources` in the host UI and add at least one M3U source.
 5. Refresh it. Expect `last_status='ok'` within 5-30s for typical playlists.
 6. Add at least one XMLTV source. Refresh it.

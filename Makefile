@@ -1,11 +1,11 @@
-BINARY := continuum-plugin-livetv
+BINARY := silo-plugin-livetv
 GO ?= go
 PNPM ?= pnpm
 
 .PHONY: build test test-go test-web web fmt vet clean
 
 build: web
-	$(GO) build -o $(BINARY) ./cmd/continuum-plugin-livetv
+	$(GO) build -o $(BINARY) ./cmd/silo-plugin-livetv
 	sha256sum $(BINARY) | awk '{print $$1}' > $(BINARY).sha256
 
 web:

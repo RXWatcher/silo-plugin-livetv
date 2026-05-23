@@ -6,7 +6,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/streamproxy"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/streamproxy"
 )
 
 // reorderRequest is the POST /favorites/reorder body.

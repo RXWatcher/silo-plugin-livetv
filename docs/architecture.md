@@ -1,10 +1,10 @@
 # Architecture
 
-Internal layout of `continuum.livetv`. Read the [README](../README.md) first for the capability list and external contract; this page is the inside view.
+Internal layout of `silo.livetv`. Read the [README](../README.md) first for the capability list and external contract; this page is the inside view.
 
 ## Process model
 
-The binary is a single Go process started by the Continuum host. On boot it:
+The binary is a single Go process started by the Silo host. On boot it:
 
 1. Loads the embedded manifest and answers the host's GetManifest RPC.
 2. Receives `database_url` via Configure and opens a pgx pool against the `livetv` schema.
@@ -20,7 +20,7 @@ No background goroutines run independently of the host. M3U/XMLTV refreshes and 
 
 ```
 cmd/
-  continuum-plugin-livetv/   main, manifest, capability wiring
+  silo-plugin-livetv/   main, manifest, capability wiring
   livetv-e2e-server/         standalone server for Playwright e2e
 internal/
   m3u/        playlist parser (#EXTM3U / #EXTINF)
@@ -138,9 +138,9 @@ Default cron: `* * * * *` (every minute). Default idle timeout from migration 00
 
 ## Auth model summary
 
-- The host validates user identity upstream and adds `X-Continuum-User-Id` to every request.
+- The host validates user identity upstream and adds `X-Silo-User-Id` to every request.
 - `RequireSession` reflects that header into the request context (no token verification; the host owns that). Missing → 401.
-- `RequireAdmin` additionally requires `X-Continuum-Admin: true`. Missing → 403.
+- `RequireAdmin` additionally requires `X-Silo-Admin: true`. Missing → 403.
 - Stream byte routes bypass both because they authenticate on the cookie/bearer set at session mint. This is why the SPA, the user API, and the stream proxy must all be served from the same registered origin: the cookie's `Path` is scoped to the plugin's base path.
 
 ## Frontend

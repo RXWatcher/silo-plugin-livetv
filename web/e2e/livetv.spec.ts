@@ -28,7 +28,7 @@ test.describe('livetv', () => {
 
     await page.goto('/');
     // The SPA renders a Live TV nav label in the tab bar.
-    await expect(page).toHaveTitle(/live tv|livetv|continuum/i);
+    await expect(page).toHaveTitle(/live tv|livetv|silo/i);
   });
 
   test('api: add M3U + XMLTV sources, refresh, channels and EPG visible', async ({ request }) => {

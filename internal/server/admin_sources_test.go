@@ -14,10 +14,10 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/server"
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/store"
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/streamproxy"
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/testutil"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/server"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/store"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/streamproxy"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/testutil"
 )
 
 // fakeAdminWorker is the admin-test analogue of scheduler's fakeWorker: it
@@ -71,8 +71,8 @@ func newAdminTestServer(pool *pgxpool.Pool, m3u, xmltv server.RefreshWorker) *se
 // adminReq builds an admin-authenticated request. body may be nil.
 func adminReq(method, path string, body io.Reader) *http.Request {
 	r := httptest.NewRequest(method, path, body)
-	r.Header.Set("X-Continuum-User-Id", "admin-a")
-	r.Header.Set("X-Continuum-Admin", "true")
+	r.Header.Set("X-Silo-User-Id", "admin-a")
+	r.Header.Set("X-Silo-Admin", "true")
 	return r
 }
 
@@ -205,7 +205,7 @@ func TestAdminM3USources_RequiresAdminHeader(t *testing.T) {
 
 	// User-only request (no admin header) must be 403.
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/livetv/admin/sources/m3u/", nil)
-	req.Header.Set("X-Continuum-User-Id", "user-a")
+	req.Header.Set("X-Silo-User-Id", "user-a")
 	rr := runRequest(srv, req)
 	if rr.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want 403", rr.Code)

@@ -18,7 +18,7 @@ func TestRun_AppliesAndIsIdempotent(t *testing.T) {
 	ctx := context.Background()
 
 	c, err := tcpostgres.Run(ctx, "postgres:16",
-		tcpostgres.WithDatabase("continuum"),
+		tcpostgres.WithDatabase("silo"),
 		tcpostgres.WithUsername("plugin_livetv"),
 		tcpostgres.WithPassword("test"),
 		testcontainers.WithWaitStrategy(

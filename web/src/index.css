@@ -4,7 +4,7 @@
    the visual system intentionally simple — a zinc dark theme that resembles
    the audiobooks SPA but does not (yet) reuse its full token system. Phase
    9's admin pages may pull in the audiobooks design tokens once we know how
-   much divergence we want between LiveTV and the rest of Continuum. */
+   much divergence we want between LiveTV and the rest of Silo. */
 
 @theme inline {
   --color-background: #09090b;

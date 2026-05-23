@@ -6,7 +6,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/store"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/store"
 )
 
 // adminSessionDTO is the wire shape for /admin/sessions list entries. We

@@ -14,9 +14,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/hashicorp/go-hclog"
 
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/store"
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/streamproxy"
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/testutil"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/store"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/streamproxy"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/testutil"
 )
 
 // mintSession inserts a stream_sessions row directly and returns the session

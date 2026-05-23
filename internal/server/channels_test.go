@@ -12,10 +12,10 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/server"
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/store"
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/streamproxy"
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/testutil"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/server"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/store"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/streamproxy"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/testutil"
 )
 
 // seedSource creates a parent m3u_sources row so channel inserts pass the FK.
@@ -59,11 +59,11 @@ func newTestServer(pool *pgxpool.Pool) *server.Server {
 	}
 }
 
-// authedReq builds a request with the X-Continuum-User-Id header set so the
+// authedReq builds a request with the X-Silo-User-Id header set so the
 // RequireSession middleware lets it through. body may be nil.
 func authedReq(method, path, userID string, body io.Reader) *http.Request {
 	r := httptest.NewRequest(method, path, body)
-	r.Header.Set("X-Continuum-User-Id", userID)
+	r.Header.Set("X-Silo-User-Id", userID)
 	return r
 }
 
@@ -224,7 +224,7 @@ func TestChannels_UnauthorizedWithoutHeader(t *testing.T) {
 	pool := testutil.StartPG(t)
 	srv := newTestServer(pool)
 
-	// Build a bare request with no X-Continuum-User-Id header.
+	// Build a bare request with no X-Silo-User-Id header.
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/livetv/channels", nil)
 	rr := runRequest(srv, req)
 	if rr.Code != http.StatusUnauthorized {

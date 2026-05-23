@@ -28,7 +28,7 @@ Provider-side outage. The plugin will retry on its next cron tick; nothing to do
 
 ### `last_status='error: dial tcp ...'`
 
-DNS or egress failure from the plugin process. Check the plugin host's outbound network. Common when the host runs in a sandbox that blocks egress to anything except the configured Continuum core.
+DNS or egress failure from the plugin process. Check the plugin host's outbound network. Common when the host runs in a sandbox that blocks egress to anything except the configured Silo core.
 
 ### `last_status='error: m3u: missing #EXTM3U header'`
 

@@ -10,8 +10,8 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/store"
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/xmltv"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/store"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/xmltv"
 )
 
 // pruneAge is the cutoff applied after every successful XMLTV refresh: any

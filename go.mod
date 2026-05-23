@@ -1,4 +1,4 @@
-module github.com/RXWatcher/continuum-plugin-livetv
+module github.com/RXWatcher/silo-plugin-livetv
 
 go 1.26.0
 

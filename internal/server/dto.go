@@ -3,7 +3,7 @@ package server
 import (
 	"time"
 
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/store"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/store"
 )
 
 // channelDTO is the wire shape returned by GET /channels and GET /channels/{id}.

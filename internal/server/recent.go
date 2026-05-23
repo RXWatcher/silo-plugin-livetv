@@ -3,7 +3,7 @@ package server
 import (
 	"net/http"
 
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/streamproxy"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/streamproxy"
 )
 
 // listRecent handles GET /recent. Defaults limit=20, max 100.

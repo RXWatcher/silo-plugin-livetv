@@ -3,24 +3,24 @@ package server
 import (
 	"net/http"
 
-	"github.com/RXWatcher/continuum-plugin-livetv/internal/streamproxy"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/streamproxy"
 )
 
 // Header names used by the host to authenticate the bridged HTTP request.
-// The portal sets X-Continuum-User-Id on every request; admin-scoped routes
-// additionally require X-Continuum-Admin: true.
+// The portal sets X-Silo-User-Id on every request; admin-scoped routes
+// additionally require X-Silo-Admin: true.
 //
 // Phase 6 keeps the implementation deliberately simple — the host has already
 // validated the user identity by the time the request reaches the plugin, so
 // the middleware just reflects the header into request context. Later phases
 // may swap in JWT validation here without touching the handlers.
 const (
-	headerUserID = "X-Continuum-User-Id"
-	headerAdmin  = "X-Continuum-Admin"
+	headerUserID = "X-Silo-User-Id"
+	headerAdmin  = "X-Silo-Admin"
 )
 
 // RequireSession is the user-scoped auth middleware. Routes wrapped with it
-// require X-Continuum-User-Id; the userID is attached to the request context
+// require X-Silo-User-Id; the userID is attached to the request context
 // via streamproxy.WithUserID so handlers can read it with UserIDFromContext.
 func RequireSession(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -34,8 +34,8 @@ func RequireSession(next http.Handler) http.Handler {
 }
 
 // RequireAdmin gates the /admin/* subrouter. It still relies on
-// X-Continuum-User-Id for identity, but additionally demands
-// X-Continuum-Admin: true (the host sets this when the requesting account is
+// X-Silo-User-Id for identity, but additionally demands
+// X-Silo-Admin: true (the host sets this when the requesting account is
 // in the admin role).
 func RequireAdmin(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

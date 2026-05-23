@@ -2,7 +2,7 @@
 
 **Status:** draft for review
 **Date:** 2026-05-21
-**Plugin name:** `continuum-plugin-livetv`
+**Plugin name:** `silo-plugin-livetv`
 **Scope:** Watch-only MVP (no DVR). IPTV (M3U) channel source + XMLTV EPG + auth-gated stream proxy + web SPA with full guide / search / favorites.
 
 ---
@@ -11,10 +11,10 @@
 
 ### Goals
 
-- One self-contained Continuum plugin that delivers a Jellyfin-equivalent Live TV experience in the web UI: channel list, two-axis EPG grid, program detail, EPG search, per-user favorites, "now / next" surfacing.
+- One self-contained Silo plugin that delivers a Jellyfin-equivalent Live TV experience in the web UI: channel list, two-axis EPG grid, program detail, EPG search, per-user favorites, "now / next" surfacing.
 - Source channels from one or more admin-configured M3U URLs.
 - Source EPG from one or more admin-configured XMLTV URLs, auto-linked to channels by `tvg-id` with manual override.
-- Gate playback bytes through Continuum's auth model so guests, scoped grants, and per-user concurrency caps are enforceable. No FFmpeg dependency.
+- Gate playback bytes through Silo's auth model so guests, scoped grants, and per-user concurrency caps are enforceable. No FFmpeg dependency.
 - A stable, documented REST API under `/api/v1/livetv/...` so the native apps (`continuum-app`) can add a Live TV tab later without protocol change.
 
 ### Non-goals (MVP)
@@ -29,7 +29,7 @@
 
 ## 2. Architecture & deployment
 
-A single new plugin `continuum-plugin-livetv` under `/opt/continuum_plugins/`, built with the existing Go SDK, same overall shape as `continuum-plugin-audiobooks`.
+A single new plugin `silo-plugin-livetv` under `/opt/silo_plugins/`, built with the existing Go SDK, same overall shape as `silo-plugin-audiobooks`.
 
 Capabilities the plugin advertises in its `manifest.json`:
 
@@ -40,8 +40,8 @@ Capabilities the plugin advertises in its `manifest.json`:
 The plugin's own `database_url` (Postgres DSN) is the only config in the manifest form. Everything else (sources, refresh cadence, group defaults, concurrency caps) is admin-managed inside the plugin's own UI and stored in the plugin's Postgres schema.
 
 ```text
-continuum-plugin-livetv/
-├── cmd/continuum-plugin-livetv/        # main, manifest subcommand wiring
+silo-plugin-livetv/
+├── cmd/silo-plugin-livetv/        # main, manifest subcommand wiring
 ├── internal/
 │   ├── m3u/                            # parser
 │   ├── xmltv/                          # parser
@@ -66,13 +66,13 @@ Mirrors audiobooks:
 ```sql
 CREATE ROLE plugin_livetv WITH LOGIN PASSWORD '<chosen>';
 CREATE SCHEMA livetv AUTHORIZATION plugin_livetv;
-GRANT CONNECT ON DATABASE continuum TO plugin_livetv;
+GRANT CONNECT ON DATABASE silo TO plugin_livetv;
 ```
 
 DSN example:
 
 ```text
-postgres://plugin_livetv:password@postgres:5432/continuum?search_path=livetv&sslmode=disable
+postgres://plugin_livetv:password@postgres:5432/silo?search_path=livetv&sslmode=disable
 ```
 
 Migrations apply at startup.
@@ -267,7 +267,7 @@ All three workers are idempotent and safe to run concurrently with themselves; p
 
 ## 5. HTTP API surface
 
-All paths are relative to the plugin's mounted root and ride Continuum's standard session auth. Response envelopes match audiobooks: `{ data: [...] }` for lists, flat object for detail. Pagination on collections is cursor-based: `?cursor=&limit=` (default 100, max 500).
+All paths are relative to the plugin's mounted root and ride Silo's standard session auth. Response envelopes match audiobooks: `{ data: [...] }` for lists, flat object for detail. Pagination on collections is cursor-based: `?cursor=&limit=` (default 100, max 500).
 
 ### User API (`/api/v1/livetv/...`, authenticated)
 
@@ -403,7 +403,7 @@ Stack mirrors audiobooks: React 19, Vite, Tailwind v4, react-router v7, TanStack
 ### Cross-cutting
 
 - `api/` — typed fetch wrappers per resource (matches audiobooks `web/src/api/`).
-- `lib/auth.ts` — pulls Continuum session from host as audiobooks does.
+- `lib/auth.ts` — pulls Silo session from host as audiobooks does.
 - TanStack Query `refetchInterval`: guide queries refetch on the next program-boundary minute; sessions admin refetches every 30s.
 - Times stored UTC, rendered in user TZ via `Intl.DateTimeFormat`.
 
@@ -413,7 +413,7 @@ Stack mirrors audiobooks: React 19, Vite, Tailwind v4, react-router v7, TanStack
 
 ```json
 {
-  "id": "continuum.livetv",
+  "id": "silo.livetv",
   "name": "Live TV",
   "version": "0.1.0",
   "description": "IPTV / M3U live TV portal with XMLTV EPG.",

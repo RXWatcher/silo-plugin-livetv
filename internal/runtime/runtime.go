@@ -4,13 +4,13 @@
 // manifest and Configure is a no-op. The plugin reads its DSN from the
 // PLUGIN_CONFIG_DATABASE_URL env var at startup rather than from the
 // host's Configure RPC. Later phases will move config to the host-managed
-// path mirroring continuum-plugin-audiobooks.
+// path mirroring silo-plugin-audiobooks.
 package runtime
 
 import (
 	"context"
 
-	pluginv1 "github.com/ContinuumApp/continuum-plugin-sdk/pkg/pluginproto/continuum/plugin/v1"
+	pluginv1 "github.com/ContinuumApp/continuum-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
 	"github.com/ContinuumApp/continuum-plugin-sdk/pkg/pluginsdk/runtimedefault"
 )
 
