@@ -95,6 +95,34 @@ func (s StaticSettings) GuideWindowCap() time.Duration {
 	return s.GuideWindow
 }
 
+// Limits bundles the host-protection knobs that are NOT per-user/per-channel
+// (those live in Settings). They guard the plugin host itself: a short
+// playlist cache to collapse duplicate upstream polls, global concurrency
+// ceilings, and a per-user request rate limit. Every field is optional — the
+// zero value disables that particular guard, preserving the prior unbounded
+// behaviour.
+type Limits struct {
+	// PlaylistCacheTTL is the freshness window for the rewritten HLS playlist
+	// cache, keyed by channel. 0 disables caching. 1-2s is the sweet spot:
+	// long enough to collapse concurrent viewers of one channel onto a single
+	// upstream fetch, short enough that the live edge barely lags.
+	PlaylistCacheTTL time.Duration
+	// GlobalStreamCap caps the total number of concurrent client streams
+	// (MPEG-TS pass-throughs + HLS segment fetches) across all users. 0 means
+	// unlimited.
+	GlobalStreamCap int
+	// GlobalUpstreamCap caps the total number of concurrent upstream
+	// connections the proxy opens. 0 means unlimited.
+	GlobalUpstreamCap int
+	// PerUserRatePerSec is the sustained request rate (per second) allowed per
+	// user on CreateSession and the segment endpoints. 0 disables rate
+	// limiting.
+	PerUserRatePerSec float64
+	// PerUserBurst is the bucket depth for PerUserRatePerSec. 0 defaults to the
+	// rate (a one-second burst).
+	PerUserBurst float64
+}
+
 // Deps is the dependency bundle shared by every stream-proxy handler. It is
 // instantiated once in main and method-bound to the chi router; tests build
 // their own to inject httptest servers and in-memory settings.
@@ -111,10 +139,34 @@ type Deps struct {
 	// defaultBasePath when empty.
 	BasePath string
 
+	// Limits configures host-protection caps and caching. Zero-valued fields
+	// disable the corresponding guard.
+	Limits Limits
+
 	// fallbackClient memoises the lazily-built guarded client used when HTTP
 	// is nil (tests, partial wiring).
 	fallbackClient *http.Client
 	fallbackOnce   sync.Once
+
+	// Host-protection primitives, lazily built from Limits on first use so a
+	// zero-value Deps stays usable in tests.
+	guardsOnce    sync.Once
+	playlistCache *ttlCache[string, []byte]
+	streamSem     *semaphore
+	upstreamSem   *semaphore
+	userLimiter   *rateLimiter
+}
+
+// initGuards lazily constructs the cache, semaphores, and rate limiter from
+// Limits. Safe to call from every handler; the sync.Once makes it a no-op
+// after the first invocation.
+func (d *Deps) initGuards() {
+	d.guardsOnce.Do(func() {
+		d.playlistCache = newTTLCache[string, []byte](d.Limits.PlaylistCacheTTL)
+		d.streamSem = newSemaphore(d.Limits.GlobalStreamCap)
+		d.upstreamSem = newSemaphore(d.Limits.GlobalUpstreamCap)
+		d.userLimiter = newRateLimiter(d.Limits.PerUserRatePerSec, d.Limits.PerUserBurst)
+	})
 }
 
 // httpClient returns the configured upstream client. When none was injected it
@@ -128,6 +180,31 @@ func (d *Deps) httpClient() *http.Client {
 		d.fallbackClient = httpclient.Streaming()
 	})
 	return d.fallbackClient
+}
+
+// playlistCacheFor returns the lazily-built playlist cache.
+func (d *Deps) playlistCacheFor() *ttlCache[string, []byte] {
+	d.initGuards()
+	return d.playlistCache
+}
+
+// streamSemaphore returns the lazily-built global stream semaphore.
+func (d *Deps) streamSemaphore() *semaphore {
+	d.initGuards()
+	return d.streamSem
+}
+
+// upstreamSemaphore returns the lazily-built global upstream-connection
+// semaphore.
+func (d *Deps) upstreamSemaphore() *semaphore {
+	d.initGuards()
+	return d.upstreamSem
+}
+
+// userRateLimiter returns the lazily-built per-user request rate limiter.
+func (d *Deps) userRateLimiter() *rateLimiter {
+	d.initGuards()
+	return d.userLimiter
 }
 
 // logger returns the configured logger, falling back to a null logger so

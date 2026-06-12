@@ -41,6 +41,14 @@ func (d *Deps) ProxyMPEGTS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Global concurrent-stream cap: bound total in-flight client streams so a
+	// surge can't exhaust host file descriptors / memory.
+	if !d.streamSemaphore().TryAcquire() {
+		http.Error(w, "server at capacity", http.StatusServiceUnavailable)
+		return
+	}
+	defer d.streamSemaphore().Release()
+
 	ch, err := d.Store.GetChannel(r.Context(), sess.ChannelID)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
@@ -53,6 +61,15 @@ func (d *Deps) ProxyMPEGTS(w http.ResponseWriter, r *http.Request) {
 	}
 
 	headers := d.sourceHeaders(r.Context(), ch.SourceM3UID)
+
+	// Global upstream-connection cap. The MPEG-TS pass-through holds one
+	// upstream socket for the whole session, so we keep the slot for the
+	// duration of the pump and release it when the stream ends.
+	if !d.upstreamSemaphore().TryAcquire() {
+		http.Error(w, "upstream at capacity", http.StatusServiceUnavailable)
+		return
+	}
+	defer d.upstreamSemaphore().Release()
 
 	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, ch.UpstreamURL, nil)
 	if err != nil {

@@ -52,6 +52,14 @@ func (d *Deps) CreateSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Per-user request rate limit. A user already pinned at their concurrency
+	// cap can otherwise spin CreateSession in a tight loop; the token bucket
+	// throttles that to a sustainable rate before we touch the database.
+	if !d.userRateLimiter().Allow(userID) {
+		writeJSONError(w, http.StatusTooManyRequests, "rate_limited", "too many requests")
+		return
+	}
+
 	channelID := chi.URLParam(r, "id")
 	if channelID == "" {
 		writeJSONError(w, http.StatusNotFound, "channel_not_found", "unknown channel")

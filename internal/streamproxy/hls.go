@@ -143,29 +143,18 @@ func (d *Deps) ProxyHLSPlaylist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	headers := d.sourceHeaders(r.Context(), ch.SourceM3UID)
-	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, ch.UpstreamURL, nil)
-	if err != nil {
-		http.Error(w, "bad upstream", http.StatusBadGateway)
-		return
-	}
-	for k, v := range headers {
-		req.Header.Set(k, v)
-	}
-	resp, err := d.httpClient().Do(req)
-	if err != nil {
-		d.logger().Warn("upstream playlist fetch failed", "err", err)
-		http.Error(w, "bad upstream", http.StatusBadGateway)
-		return
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+	// Fetch the raw upstream playlist, with a short per-channel cache in front
+	// so N concurrent viewers of one channel collapse onto a single upstream
+	// poll. The cached value is the *raw* upstream body — rewriting (which
+	// embeds the per-session signed segment tokens) happens after the cache so
+	// each session still gets its own tokens.
+	rawBody, ok := d.fetchPlaylistBody(r, ch)
+	if !ok {
 		http.Error(w, "bad upstream", http.StatusBadGateway)
 		return
 	}
 
-	body := httpclient.LimitBody(resp.Body, httpclient.PlaylistMaxBytes)
-	rewritten, err := RewritePlaylist(body, upstreamURL, sessID, sess.SessionSecret, d.basePath(), 5*time.Minute)
+	rewritten, err := RewritePlaylist(bytes.NewReader(rawBody), upstreamURL, sessID, sess.SessionSecret, d.basePath(), 5*time.Minute)
 	if err != nil {
 		d.logger().Warn("rewrite playlist failed", "err", err)
 		http.Error(w, "rewrite failed", http.StatusBadGateway)
@@ -178,6 +167,52 @@ func (d *Deps) ProxyHLSPlaylist(w http.ResponseWriter, r *http.Request) {
 
 	// Best-effort accounting bump — keeps the session out of the reaper.
 	_ = d.Store.UpdateSessionLastByte(r.Context(), sessID, time.Now().UTC(), int64(len(rewritten)))
+}
+
+// fetchPlaylistBody returns the raw upstream .m3u8 body for ch, served from a
+// short per-channel cache when fresh. On a miss it acquires an upstream
+// connection slot, fetches the playlist, caps the read at PlaylistMaxBytes, and
+// stores the result. Returns (body, false) on any upstream failure; the caller
+// has already written nothing, so it maps the false to a 502.
+func (d *Deps) fetchPlaylistBody(r *http.Request, ch store.Channel) ([]byte, bool) {
+	cache := d.playlistCacheFor()
+	if cached, ok := cache.Get(ch.ID); ok {
+		return cached, true
+	}
+
+	// Bound concurrent upstream connections. Playlist fetches are short, so we
+	// release the slot as soon as the body is read (deferred below).
+	if !d.upstreamSemaphore().TryAcquire() {
+		d.logger().Warn("upstream at capacity, playlist fetch refused", "channel_id", ch.ID)
+		return nil, false
+	}
+	defer d.upstreamSemaphore().Release()
+
+	headers := d.sourceHeaders(r.Context(), ch.SourceM3UID)
+	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, ch.UpstreamURL, nil)
+	if err != nil {
+		return nil, false
+	}
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+	resp, err := d.httpClient().Do(req)
+	if err != nil {
+		d.logger().Warn("upstream playlist fetch failed", "err", err)
+		return nil, false
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, false
+	}
+
+	raw, err := io.ReadAll(httpclient.LimitBody(resp.Body, httpclient.PlaylistMaxBytes))
+	if err != nil {
+		d.logger().Warn("read upstream playlist failed", "err", err)
+		return nil, false
+	}
+	cache.Set(ch.ID, raw)
+	return raw, true
 }
 
 // ProxyHLSSegment handles GET /api/v1/livetv/stream/{session_id}/segment?u=...
@@ -206,12 +241,35 @@ func (d *Deps) ProxyHLSSegment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Per-user rate limit: segment pulls arrive in a tight cadence; a buggy or
+	// hostile client could otherwise hammer this endpoint. The bucket is keyed
+	// on the session's user so legitimate playback stays well under the cap.
+	if !d.userRateLimiter().Allow(sess.UserID) {
+		http.Error(w, "too many requests", http.StatusTooManyRequests)
+		return
+	}
+
+	// Global concurrent-stream cap and upstream-connection cap. Both slots are
+	// short-lived for a segment (held only for the fetch + copy) and released
+	// on return.
+	if !d.streamSemaphore().TryAcquire() {
+		http.Error(w, "server at capacity", http.StatusServiceUnavailable)
+		return
+	}
+	defer d.streamSemaphore().Release()
+
 	ch, err := d.Store.GetChannel(r.Context(), sess.ChannelID)
 	if err != nil {
 		http.Error(w, "channel gone", http.StatusNotFound)
 		return
 	}
 	headers := d.sourceHeaders(r.Context(), ch.SourceM3UID)
+
+	if !d.upstreamSemaphore().TryAcquire() {
+		http.Error(w, "upstream at capacity", http.StatusServiceUnavailable)
+		return
+	}
+	defer d.upstreamSemaphore().Release()
 
 	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, uri, nil)
 	if err != nil {

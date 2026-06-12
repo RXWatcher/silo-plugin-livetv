@@ -1,7 +1,10 @@
 package server
 
 import (
+	"encoding/json"
 	"net/http"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/RXWatcher/silo-plugin-livetv/internal/streamproxy"
@@ -64,6 +67,19 @@ func (s *Server) guideWindow(w http.ResponseWriter, r *http.Request) {
 		end = start.Add(cap)
 	}
 
+	// Short-lived response cache: clients re-poll the same window aggressively,
+	// so collapse identical (user, window, selector) queries onto one DB read +
+	// encode. The key is built before resolving the default channel set so a
+	// cache hit avoids that lookup too.
+	cacheKey := guideCacheKey(userID, start, end, q.Get("group"), q["channels"])
+	cache := s.guideResponseCache()
+	if body, ok := cache.Get(cacheKey); ok {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(body)
+		return
+	}
+
 	channels := q["channels"]
 	if len(channels) == 0 {
 		ids, err := s.Store.VisibleChannelIDsForUser(r.Context(), userID, q.Get("group"))
@@ -93,7 +109,39 @@ func (s *Server) guideWindow(w http.ResponseWriter, r *http.Request) {
 		}
 		out.Data[cid] = dtos
 	}
-	writeJSON(w, http.StatusOK, out)
+
+	body, err := json.Marshal(out)
+	if err != nil {
+		s.logger().Warn("guide marshal failed", "err", err)
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	cache.Set(cacheKey, body)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(body)
+}
+
+// guideCacheKey builds a stable cache key from the request inputs that affect
+// the response. The window is truncated to seconds so sub-second jitter in the
+// "now" default doesn't fragment the cache, and the channel selector is sorted
+// so two requests listing the same channels in different orders collide.
+func guideCacheKey(userID string, start, end time.Time, group string, channels []string) string {
+	var sb strings.Builder
+	sb.WriteString(userID)
+	sb.WriteByte('|')
+	sb.WriteString(start.UTC().Truncate(time.Second).Format(time.RFC3339))
+	sb.WriteByte('|')
+	sb.WriteString(end.UTC().Truncate(time.Second).Format(time.RFC3339))
+	sb.WriteByte('|')
+	sb.WriteString(group)
+	sb.WriteByte('|')
+	if len(channels) > 0 {
+		sorted := append([]string(nil), channels...)
+		sort.Strings(sorted)
+		sb.WriteString(strings.Join(sorted, ","))
+	}
+	return sb.String()
 }
 
 // guideCap returns the configured guide-window cap. When the Settings impl is
