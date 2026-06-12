@@ -7,8 +7,8 @@
 // runtime; this binary only adds:
 //
 //   - An auth-bypass middleware that injects X-Silo-User-Id and
-//     X-Silo-Admin so the chi handlers' RequireSession / RequireAdmin
-//     middleware accept every request.
+//     X-Silo-User-Role: admin so the chi handlers' RequireSession /
+//     RequireAdmin middleware accept every request.
 //   - A `/` fallback that serves the embedded SPA (the gRPC capability
 //     surface does that in production via the host's static file glue;
 //     here we serve it ourselves so the browser can load index.html).
@@ -36,6 +36,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/RXWatcher/silo-plugin-livetv/internal/httpclient"
 	"github.com/RXWatcher/silo-plugin-livetv/internal/migrate"
 	"github.com/RXWatcher/silo-plugin-livetv/internal/refresh"
 	"github.com/RXWatcher/silo-plugin-livetv/internal/server"
@@ -82,14 +83,17 @@ func main() {
 		os.Exit(1)
 	}
 
+	streamClient := httpclient.Streaming()
+	refreshClient := httpclient.ShortLived()
+
 	streamDeps := &streamproxy.Deps{
 		Store:    st,
 		Settings: snap,
 		Logger:   logger.Named("streamproxy"),
-		HTTP:     http.DefaultClient,
+		HTTP:     streamClient,
 	}
-	m3uWorker := &refresh.M3UWorker{Store: st, Client: http.DefaultClient, Logger: logger.Named("m3u")}
-	xmltvWorker := &refresh.XMLTVWorker{Store: st, Client: http.DefaultClient, Logger: logger.Named("xmltv")}
+	m3uWorker := &refresh.M3UWorker{Store: st, Client: refreshClient, Logger: logger.Named("m3u")}
+	xmltvWorker := &refresh.XMLTVWorker{Store: st, Client: refreshClient, Logger: logger.Named("xmltv")}
 
 	srv := &server.Server{
 		Store:       st,
@@ -133,7 +137,7 @@ func main() {
 	}
 }
 
-// withAuthBypass injects the X-Silo-User-Id and X-Silo-Admin
+// withAuthBypass injects the X-Silo-User-Id and X-Silo-User-Role: admin
 // headers on every API request so the chi RequireSession / RequireAdmin
 // middleware lets the test through without a real host.
 func withAuthBypass(next http.Handler, userID string) http.Handler {
@@ -141,8 +145,8 @@ func withAuthBypass(next http.Handler, userID string) http.Handler {
 		if r.Header.Get("X-Silo-User-Id") == "" {
 			r.Header.Set("X-Silo-User-Id", userID)
 		}
-		if r.Header.Get("X-Silo-Admin") == "" {
-			r.Header.Set("X-Silo-Admin", "true")
+		if r.Header.Get("X-Silo-User-Role") == "" {
+			r.Header.Set("X-Silo-User-Role", "admin")
 		}
 		next.ServeHTTP(w, r)
 	})

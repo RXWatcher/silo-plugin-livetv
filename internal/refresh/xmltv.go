@@ -10,6 +10,7 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 
+	"github.com/RXWatcher/silo-plugin-livetv/internal/httpclient"
 	"github.com/RXWatcher/silo-plugin-livetv/internal/store"
 	"github.com/RXWatcher/silo-plugin-livetv/internal/xmltv"
 )
@@ -29,13 +30,13 @@ type XMLTVWorker struct {
 	Logger hclog.Logger
 }
 
-// httpClient returns the worker's HTTP client, defaulting to
-// http.DefaultClient when none was supplied.
+// httpClient returns the worker's HTTP client, defaulting to the shared
+// SSRF-guarded short-lived client when none was supplied.
 func (w *XMLTVWorker) httpClient() *http.Client {
 	if w.Client != nil {
 		return w.Client
 	}
-	return http.DefaultClient
+	return sharedFallbackClient()
 }
 
 // logger returns the worker's logger, defaulting to a null logger.
@@ -127,7 +128,8 @@ func (w *XMLTVWorker) RefreshOne(ctx context.Context, id string) error {
 		return nil
 	}
 
-	if parseErr := xmltv.ParseAuto(resp.Body, onChannel, onProgramme); parseErr != nil {
+	limited := httpclient.LimitBody(resp.Body, httpclient.XMLTVMaxBytes)
+	if parseErr := xmltv.ParseAuto(limited, onChannel, onProgramme); parseErr != nil {
 		_ = w.Store.MarkXMLTVStatus(ctx, id, "error: "+parseErr.Error(), src.ETag, src.LastModified, now)
 		return fmt.Errorf("parse xmltv: %w", parseErr)
 	}

@@ -5,12 +5,92 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 
 	"github.com/RXWatcher/silo-plugin-livetv/internal/store"
 )
+
+// maskedValue is the placeholder substituted for any credential we refuse to
+// echo back to the admin UI. Non-empty so the operator can see a secret IS set
+// without learning its value.
+const maskedValue = "REDACTED"
+
+// sensitiveHeaderNames are HTTP header names (lower-cased) whose values carry
+// upstream credentials. Their values are masked in admin responses.
+var sensitiveHeaderNames = map[string]struct{}{
+	"authorization":       {},
+	"proxy-authorization": {},
+	"cookie":              {},
+	"x-api-key":           {},
+	"api-key":             {},
+	"x-auth-token":        {},
+}
+
+// sensitiveQueryKeys are URL query parameters (lower-cased) that carry upstream
+// xtream-style credentials. Their values are masked in admin responses.
+var sensitiveQueryKeys = map[string]struct{}{
+	"username": {},
+	"password": {},
+	"token":    {},
+	"auth":     {},
+	"api_key":  {},
+	"apikey":   {},
+}
+
+// maskHeaders returns a copy of h with the values of credential-bearing headers
+// replaced by maskedValue. The original map is never mutated.
+func maskHeaders(h map[string]string) map[string]string {
+	out := make(map[string]string, len(h))
+	for k, v := range h {
+		if _, ok := sensitiveHeaderNames[strings.ToLower(k)]; ok && v != "" {
+			out[k] = maskedValue
+			continue
+		}
+		out[k] = v
+	}
+	return out
+}
+
+// maskURL redacts credentials embedded in an upstream source URL: any userinfo
+// (user:pass@) and any sensitive query parameter value. Unparseable URLs are
+// returned verbatim — they hold no parseable secret to leak structurally, and
+// the admin still needs to see what was stored to fix it.
+func maskURL(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return raw
+	}
+	if u.User != nil {
+		if _, hasPass := u.User.Password(); hasPass {
+			u.User = url.UserPassword(u.User.Username(), maskedValue)
+		} else if u.User.Username() != "" {
+			u.User = url.User(maskedValue)
+		}
+	}
+	if q := u.Query(); len(q) > 0 {
+		changed := false
+		for key, vals := range q {
+			if _, ok := sensitiveQueryKeys[strings.ToLower(key)]; !ok {
+				continue
+			}
+			for i := range vals {
+				if vals[i] != "" {
+					vals[i] = maskedValue
+					changed = true
+				}
+			}
+			q[key] = vals
+		}
+		if changed {
+			u.RawQuery = q.Encode()
+		}
+	}
+	return u.String()
+}
 
 // adminRefreshTimeout caps the manual refresh background goroutine so a slow
 // upstream can't tie up workers indefinitely after the operator returns 202.
@@ -70,15 +150,11 @@ type adminXMLTVSourceRequest struct {
 // toAdminM3UDTO collapses a store.M3USource onto the wire shape, normalising
 // nil header maps to {} so the response always has a stable structure.
 func toAdminM3UDTO(src store.M3USource) adminM3USourceDTO {
-	headers := src.HTTPHeaders
-	if headers == nil {
-		headers = map[string]string{}
-	}
 	return adminM3USourceDTO{
 		ID:              src.ID,
 		Name:            src.Name,
-		URL:             src.URL,
-		HTTPHeaders:     headers,
+		URL:             maskURL(src.URL),
+		HTTPHeaders:     maskHeaders(src.HTTPHeaders),
 		Enabled:         src.Enabled,
 		RefreshInterval: src.RefreshInterval.String(),
 		LastRefreshedAt: src.LastRefreshedAt,
@@ -90,15 +166,11 @@ func toAdminM3UDTO(src store.M3USource) adminM3USourceDTO {
 
 // toAdminXMLTVDTO mirrors toAdminM3UDTO with the Gzip column added.
 func toAdminXMLTVDTO(src store.XMLTVSource) adminXMLTVSourceDTO {
-	headers := src.HTTPHeaders
-	if headers == nil {
-		headers = map[string]string{}
-	}
 	return adminXMLTVSourceDTO{
 		ID:              src.ID,
 		Name:            src.Name,
-		URL:             src.URL,
-		HTTPHeaders:     headers,
+		URL:             maskURL(src.URL),
+		HTTPHeaders:     maskHeaders(src.HTTPHeaders),
 		Enabled:         src.Enabled,
 		RefreshInterval: src.RefreshInterval.String(),
 		Gzip:            src.Gzip,

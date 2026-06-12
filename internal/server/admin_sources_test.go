@@ -72,7 +72,7 @@ func newAdminTestServer(pool *pgxpool.Pool, m3u, xmltv server.RefreshWorker) *se
 func adminReq(method, path string, body io.Reader) *http.Request {
 	r := httptest.NewRequest(method, path, body)
 	r.Header.Set("X-Silo-User-Id", "admin-a")
-	r.Header.Set("X-Silo-Admin", "true")
+	r.Header.Set("X-Silo-User-Role", "admin")
 	return r
 }
 

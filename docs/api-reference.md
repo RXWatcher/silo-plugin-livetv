@@ -10,7 +10,7 @@ Routes are defined in `internal/server/router.go`. Authentication happens in `in
 | --- | --- | --- |
 | Public | None | `GET /healthz` only |
 | User | `RequireSession` | `X-Silo-User-Id` (the host sets this on the proxied request) |
-| Admin | `RequireAdmin` | `X-Silo-User-Id` + `X-Silo-Admin: true` |
+| Admin | `RequireAdmin` | `X-Silo-User-Id` + `X-Silo-User-Role: admin` |
 | Stream byte routes | Token verification | Cookie `livetv_stream=<sessionID>.<hex(secret)>` (or `Authorization: Bearer ...`) |
 
 The host owns user identity. The plugin trusts the headers and reflects the user id into request context via `streamproxy.WithUserID`. Don't expose the plugin's port directly to clients — the auth model relies on the host doing the front-line check.
@@ -87,7 +87,9 @@ Common error responses:
 
 ## Admin API
 
-All require `X-Silo-User-Id` + `X-Silo-Admin: true`.
+All require `X-Silo-User-Id` + `X-Silo-User-Role: admin`.
+
+Credential-bearing fields in source responses are masked: upstream URL userinfo and sensitive query parameters (e.g. `username`, `password`, `token`) are redacted to `REDACTED`, as are credential headers (`Authorization`, `Cookie`, `X-Api-Key`, …) in `http_headers`.
 
 ### Sources
 

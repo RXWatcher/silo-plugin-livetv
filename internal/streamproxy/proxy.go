@@ -28,12 +28,14 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"crypto/subtle"
 
 	"github.com/hashicorp/go-hclog"
 
+	"github.com/RXWatcher/silo-plugin-livetv/internal/httpclient"
 	"github.com/RXWatcher/silo-plugin-livetv/internal/store"
 )
 
@@ -100,20 +102,32 @@ type Deps struct {
 	Store    *store.Store
 	Settings Settings
 	Logger   hclog.Logger
-	// HTTP is used for all upstream calls (probe + proxy). nil → http.DefaultClient.
+	// HTTP is used for all upstream calls (probe + proxy). It MUST be an
+	// SSRF-guarded streaming client (see internal/httpclient.Streaming). When
+	// nil, httpClient() lazily builds one so the proxy is never accidentally
+	// wired to an unguarded http.DefaultClient.
 	HTTP *http.Client
 	// BasePath is the public mount point (e.g. "/api/v1/livetv"). Defaults to
 	// defaultBasePath when empty.
 	BasePath string
+
+	// fallbackClient memoises the lazily-built guarded client used when HTTP
+	// is nil (tests, partial wiring).
+	fallbackClient *http.Client
+	fallbackOnce   sync.Once
 }
 
-// httpClient returns the configured upstream client, falling back to
-// http.DefaultClient.
+// httpClient returns the configured upstream client. When none was injected it
+// falls back to a lazily-built SSRF-guarded streaming client rather than the
+// unguarded http.DefaultClient.
 func (d *Deps) httpClient() *http.Client {
 	if d.HTTP != nil {
 		return d.HTTP
 	}
-	return http.DefaultClient
+	d.fallbackOnce.Do(func() {
+		d.fallbackClient = httpclient.Streaming()
+	})
+	return d.fallbackClient
 }
 
 // logger returns the configured logger, falling back to a null logger so

@@ -18,6 +18,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/RXWatcher/silo-plugin-livetv/internal/httpclient"
 	"github.com/RXWatcher/silo-plugin-livetv/internal/store"
 )
 
@@ -163,7 +164,8 @@ func (d *Deps) ProxyHLSPlaylist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rewritten, err := RewritePlaylist(resp.Body, upstreamURL, sessID, sess.SessionSecret, d.basePath(), 5*time.Minute)
+	body := httpclient.LimitBody(resp.Body, httpclient.PlaylistMaxBytes)
+	rewritten, err := RewritePlaylist(body, upstreamURL, sessID, sess.SessionSecret, d.basePath(), 5*time.Minute)
 	if err != nil {
 		d.logger().Warn("rewrite playlist failed", "err", err)
 		http.Error(w, "rewrite failed", http.StatusBadGateway)

@@ -14,17 +14,17 @@ import (
 	_ "embed"
 	"encoding/hex"
 	"fmt"
-	"net/http"
 	"os"
 	goruntime "runtime"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	pluginv1 "github.com/ContinuumApp/continuum-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
-	publicmanifest "github.com/ContinuumApp/continuum-plugin-sdk/pkg/pluginsdk/manifest"
-	sdkruntime "github.com/ContinuumApp/continuum-plugin-sdk/pkg/pluginsdk/runtime"
+	pluginv1 "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
+	publicmanifest "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginsdk/manifest"
+	sdkruntime "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginsdk/runtime"
 
+	"github.com/RXWatcher/silo-plugin-livetv/internal/httpclient"
 	"github.com/RXWatcher/silo-plugin-livetv/internal/httproutes"
 	"github.com/RXWatcher/silo-plugin-livetv/internal/migrate"
 	"github.com/RXWatcher/silo-plugin-livetv/internal/refresh"
@@ -46,6 +46,16 @@ func main() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "load manifest: %v\n", err)
 		os.Exit(1)
+	}
+
+	// Serve the manifest subcommand before requiring runtime config — the
+	// host extracts the manifest at install time, before any config exists.
+	if len(os.Args) > 1 && os.Args[1] == "manifest" {
+		sdkruntime.Serve(sdkruntime.ServeConfig{
+			Logger:  logger,
+			Servers: sdkruntime.CapabilityServers{Runtime: pluginrt.New(manifest)},
+		})
+		return
 	}
 
 	dsn := os.Getenv("PLUGIN_CONFIG_DATABASE_URL")
@@ -79,18 +89,25 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Upstream HTTP clients are SSRF-guarded (see internal/httpclient). The
+	// stream proxy uses a no-overall-timeout streaming client so long-lived
+	// MPEG-TS / HLS reads aren't killed; refresh workers use a short-lived
+	// client so a slow provider can't pin a refresh goroutine.
+	streamClient := httpclient.Streaming()
+	refreshClient := httpclient.ShortLived()
+
 	streamDeps := &streamproxy.Deps{
 		Store:    st,
 		Settings: snap,
 		Logger:   logger.Named("streamproxy"),
-		HTTP:     http.DefaultClient,
+		HTTP:     streamClient,
 	}
 
 	// Build the live workers up-front so the admin handler and the scheduler
 	// share the same instances. depsFn closes over them so future Configure
 	// calls can swap dependencies underneath the running gRPC server.
-	m3uWorker := &refresh.M3UWorker{Store: st, Client: http.DefaultClient, Logger: logger.Named("m3u")}
-	xmltvWorker := &refresh.XMLTVWorker{Store: st, Client: http.DefaultClient, Logger: logger.Named("xmltv")}
+	m3uWorker := &refresh.M3UWorker{Store: st, Client: refreshClient, Logger: logger.Named("m3u")}
+	xmltvWorker := &refresh.XMLTVWorker{Store: st, Client: refreshClient, Logger: logger.Named("xmltv")}
 
 	// Build the server package's HTTP handler — single source of truth for the
 	// URL map. All routes (user API, admin API, stream-proxy bytes) are

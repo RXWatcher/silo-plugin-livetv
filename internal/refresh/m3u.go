@@ -13,13 +13,31 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/hashicorp/go-hclog"
 
+	"github.com/RXWatcher/silo-plugin-livetv/internal/httpclient"
 	"github.com/RXWatcher/silo-plugin-livetv/internal/m3u"
 	"github.com/RXWatcher/silo-plugin-livetv/internal/store"
 )
+
+// fallbackClient is the shared SSRF-guarded short-lived client used by refresh
+// workers when no client was injected (tests, partial wiring). Built once.
+var (
+	fallbackClient     *http.Client
+	fallbackClientOnce sync.Once
+)
+
+// sharedFallbackClient lazily builds the guarded refresh client so a worker is
+// never accidentally wired to an unguarded http.DefaultClient.
+func sharedFallbackClient() *http.Client {
+	fallbackClientOnce.Do(func() {
+		fallbackClient = httpclient.ShortLived()
+	})
+	return fallbackClient
+}
 
 // M3UWorker pulls M3U playlists from configured upstream providers, upserts
 // channels into the store, and soft-disables channels absent from the latest
@@ -31,13 +49,13 @@ type M3UWorker struct {
 	Logger hclog.Logger
 }
 
-// httpClient returns the worker's HTTP client, falling back to
-// http.DefaultClient when none was supplied.
+// httpClient returns the worker's HTTP client, falling back to the shared
+// SSRF-guarded short-lived client when none was supplied.
 func (w *M3UWorker) httpClient() *http.Client {
 	if w.Client != nil {
 		return w.Client
 	}
-	return http.DefaultClient
+	return sharedFallbackClient()
 }
 
 // logger returns the worker's hclog.Logger, falling back to a null logger.
@@ -116,7 +134,7 @@ func (w *M3UWorker) RefreshOne(ctx context.Context, id string) error {
 		return fmt.Errorf("http %d", resp.StatusCode)
 	}
 
-	entries, parseErr := m3u.Parse(resp.Body)
+	entries, parseErr := m3u.Parse(httpclient.LimitBody(resp.Body, httpclient.PlaylistMaxBytes))
 	if parseErr != nil {
 		_ = w.Store.MarkM3UStatus(ctx, id, "error: "+parseErr.Error(), src.ETag, src.LastModified, now)
 		return fmt.Errorf("parse m3u: %w", parseErr)

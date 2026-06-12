@@ -15,6 +15,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/oklog/ulid/v2"
 
+	"github.com/RXWatcher/silo-plugin-livetv/internal/httpclient"
 	"github.com/RXWatcher/silo-plugin-livetv/internal/store"
 )
 
@@ -271,7 +272,7 @@ func (d *Deps) getSniff(ctx context.Context, rawURL string, headers map[string]s
 	if bytes.HasPrefix(bytes.TrimLeft(buf, " \t\r\n"), []byte("#EXTM3U")) {
 		return "hls", nil
 	}
-	d.logger().Warn("upstream sniff inconclusive, defaulting to mpegts", "url", rawURL)
+	d.logger().Warn("upstream sniff inconclusive, defaulting to mpegts", "url", httpclient.RedactURL(rawURL))
 	return "mpegts", nil
 }
 

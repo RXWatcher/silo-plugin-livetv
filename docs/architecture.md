@@ -140,7 +140,7 @@ Default cron: `* * * * *` (every minute). Default idle timeout from migration 00
 
 - The host validates user identity upstream and adds `X-Silo-User-Id` to every request.
 - `RequireSession` reflects that header into the request context (no token verification; the host owns that). Missing → 401.
-- `RequireAdmin` additionally requires `X-Silo-Admin: true`. Missing → 403.
+- `RequireAdmin` additionally requires `X-Silo-User-Role: admin` (the host stamps the requesting account's role on every proxied request). Missing/non-admin → 403.
 - Stream byte routes bypass both because they authenticate on the cookie/bearer set at session mint. This is why the SPA, the user API, and the stream proxy must all be served from the same registered origin: the cookie's `Path` is scoped to the plugin's base path.
 
 ## Frontend
