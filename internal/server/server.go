@@ -13,6 +13,8 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"sync"
+	"time"
 
 	"github.com/hashicorp/go-hclog"
 
@@ -54,6 +56,36 @@ type Server struct {
 	M3UWorker   RefreshWorker
 	XMLTVWorker RefreshWorker
 	Snapshot    SettingsReloader
+
+	// GuideCacheTTL is the freshness window for cached GET /guide responses.
+	// The guide is served from the DB (kept current by the XMLTV refresh
+	// worker), and clients re-poll the same windows often, so a short cache
+	// (a few seconds) collapses identical queries. 0 disables the cache.
+	GuideCacheTTL time.Duration
+
+	// AuditLogger receives structured audit events for admin source mutations.
+	// Defaults to logger().Named("audit") when nil.
+	AuditLogger hclog.Logger
+
+	guideCacheOnce sync.Once
+	guideRespCache *guideCache
+}
+
+// guideResponseCache returns the lazily-built guide response cache.
+func (s *Server) guideResponseCache() *guideCache {
+	s.guideCacheOnce.Do(func() {
+		s.guideRespCache = newGuideCache(s.GuideCacheTTL)
+	})
+	return s.guideRespCache
+}
+
+// auditLogger returns the audit logger, defaulting to a child of the server
+// logger so audit events are always captured even when one isn't injected.
+func (s *Server) auditLogger() hclog.Logger {
+	if s.AuditLogger != nil {
+		return s.AuditLogger
+	}
+	return s.logger().Named("audit")
 }
 
 // logger returns the configured logger, falling back to a null logger so

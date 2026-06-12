@@ -12,7 +12,34 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/RXWatcher/silo-plugin-livetv/internal/store"
+	"github.com/RXWatcher/silo-plugin-livetv/internal/streamproxy"
 )
+
+// auditSourceMutation emits a structured audit-log line for an admin source
+// mutation. Credentials are never logged: the URL is run through maskURL and
+// headers through maskHeaders (the same redaction used for admin API
+// responses), so an audit sink can retain these lines indefinitely without
+// holding upstream secrets. The actor is the admin user id reflected onto the
+// request context by RequireAdmin.
+//
+// rawURL/headers are the *pre-mask* values from the request; masking happens
+// here so every call site is redacted by construction rather than relying on
+// each caller to remember.
+func (s *Server) auditSourceMutation(ctx context.Context, action, kind, id, rawURL string, headers map[string]string) {
+	args := []any{
+		"action", action,
+		"source_kind", kind,
+		"source_id", id,
+		"actor", streamproxy.UserIDFromContext(ctx),
+	}
+	if rawURL != "" {
+		args = append(args, "url", maskURL(rawURL))
+	}
+	if len(headers) > 0 {
+		args = append(args, "http_headers", maskHeaders(headers))
+	}
+	s.auditLogger().Info("admin source mutation", args...)
+}
 
 // maskedValue is the placeholder substituted for any credential we refuse to
 // echo back to the admin UI. Non-empty so the operator can see a secret IS set
@@ -262,6 +289,7 @@ func (s *Server) adminCreateM3USource(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
+	s.auditSourceMutation(r.Context(), "create", "m3u", src.ID, req.URL, req.HTTPHeaders)
 	writeJSON(w, http.StatusCreated, toAdminM3UDTO(src))
 }
 
@@ -314,6 +342,7 @@ func (s *Server) adminUpdateM3USource(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
+	s.auditSourceMutation(r.Context(), "update", "m3u", id, req.URL, req.HTTPHeaders)
 	src, err := s.Store.GetM3USource(r.Context(), id)
 	if err != nil {
 		s.logger().Warn("admin reload m3u source", "id", id, "err", err)
@@ -335,6 +364,7 @@ func (s *Server) adminDeleteM3USource(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
+	s.auditSourceMutation(r.Context(), "delete", "m3u", id, "", nil)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -413,6 +443,7 @@ func (s *Server) adminCreateXMLTVSource(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
+	s.auditSourceMutation(r.Context(), "create", "xmltv", src.ID, req.URL, req.HTTPHeaders)
 	writeJSON(w, http.StatusCreated, toAdminXMLTVDTO(src))
 }
 
@@ -466,6 +497,7 @@ func (s *Server) adminUpdateXMLTVSource(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
+	s.auditSourceMutation(r.Context(), "update", "xmltv", id, req.URL, req.HTTPHeaders)
 	src, err := s.Store.GetXMLTVSource(r.Context(), id)
 	if err != nil {
 		s.logger().Warn("admin reload xmltv source", "id", id, "err", err)
@@ -487,6 +519,7 @@ func (s *Server) adminDeleteXMLTVSource(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
+	s.auditSourceMutation(r.Context(), "delete", "xmltv", id, "", nil)
 	w.WriteHeader(http.StatusNoContent)
 }
 
